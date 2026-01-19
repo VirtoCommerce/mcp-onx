@@ -12,23 +12,31 @@ import type {
   GetOrdersInput,
 } from '@cof-org/mcp';
 import type { YourFulfillmentOrder, YourFulfillmentApiResponse } from '../types.js';
-import type { CustomerOrder, CustomerOrderSearchResult } from '../models/customer-order.js';
+import type {
+  CustomerOrder,
+  CustomerOrderSearchResult,
+  CustomerOrderSearchCriteria,
+} from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { OrderTransformer } from '../transformers/order.transformer.js';
-import { mapOrderFilters } from '../mappers/filter.mappers.js';
+import { CustomerService } from './customer.service.js';
+import { mapOrderFiltersToSearchCriteria } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
 import { ApiClient } from '../utils/api-client.js';
 
 export class OrderService extends BaseService {
   private transformer: OrderTransformer;
+  private customerService: CustomerService;
 
   constructor(client: ApiClient, tenantId: string = 'default-workspace', workspace?: string) {
     super(client);
     this.transformer = new OrderTransformer(tenantId, workspace);
+    this.customerService = new CustomerService(client, tenantId);
   }
 
   setTenantId(tenantId: string): void {
     this.transformer.setTenantId(tenantId);
+    this.customerService.setTenantId(tenantId);
   }
 
   setWorkspace(workspace: string): void {
@@ -115,10 +123,12 @@ export class OrderService extends BaseService {
 
   async getOrders(input: GetOrdersInput): Promise<FulfillmentToolResult<{ orders: Order[] }>> {
     try {
+      // Build VirtoCommerce search criteria from input
+      const searchCriteria: CustomerOrderSearchCriteria = mapOrderFiltersToSearchCriteria(input);
+
       const response = await this.client.post<CustomerOrderSearchResult>(
         '/api/order/customerOrders/search',
-        {},
-        mapOrderFilters(input)
+        searchCriteria
       );
 
       if (!response.success) {
@@ -126,7 +136,17 @@ export class OrderService extends BaseService {
       }
 
       const results = (response.data as CustomerOrderSearchResult)?.results ?? [];
-      const orders = this.transformer.toMcpOrders(results);
+
+      // Extract unique customer IDs from orders
+      const customerIds = results
+        .map((order) => order.customerId)
+        .filter((id): id is string => !!id);
+
+      // Load customers by IDs
+      const customerMap = await this.customerService.getCustomersByIds(customerIds);
+
+      // Transform orders with loaded customer data
+      const orders = this.transformer.toMcpOrders(results, customerMap);
       return this.success<{ orders: Order[] }>({ orders });
     } catch (error: unknown) {
       return this.failure<{ orders: Order[] }>(`Order lookup failed: ${getErrorMessage(error)}`, error);

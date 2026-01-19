@@ -41,7 +41,7 @@ export class ApiClient {
         Accept: 'application/json',
         // Add your authentication header
         // Different APIs use different auth methods:
-        'X-API-Key': config.apiKey,
+        'api_key': config.apiKey,
         // 'Authorization': `Bearer ${config.apiKey}`,
         // 'API-Key': config.apiKey,
         ...config.headers,

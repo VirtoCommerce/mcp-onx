@@ -4,6 +4,7 @@
 
 import type { Customer, FulfillmentToolResult, GetCustomersInput } from '@cof-org/mcp';
 import type { YourFulfillmentCustomer } from '../types.js';
+import type { Contact, MemberSearchCriteria } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { CustomerTransformer } from '../transformers/customer.transformer.js';
 import { mapCustomerFilters } from '../mappers/filter.mappers.js';
@@ -20,6 +21,76 @@ export class CustomerService extends BaseService {
 
   setTenantId(tenantId: string): void {
     this.transformer.setTenantId(tenantId);
+  }
+
+  /**
+   * Get a customer by ID from VirtoCommerce
+   */
+  async getCustomerById(customerId: string): Promise<Contact | null> {
+    if (!customerId) {
+      return null;
+    }
+
+    try {
+      // VirtoCommerce API: GET /api/members/{id}
+      const response = await this.client.get<Contact>(`/api/members/${customerId}`);
+
+      if (!response.success || !response.data) {
+        return null;
+      }
+
+      return response.data;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get multiple customers by IDs from VirtoCommerce
+   */
+  async getCustomersByIds(customerIds: string[]): Promise<Map<string, Contact>> {
+    const customerMap = new Map<string, Contact>();
+
+    if (!customerIds.length) {
+      return customerMap;
+    }
+
+    // Remove duplicates
+    const uniqueIds = [...new Set(customerIds.filter(Boolean))];
+
+    try {
+      // VirtoCommerce API: POST /api/members/search
+      const searchCriteria: MemberSearchCriteria = {
+        objectIds: uniqueIds,
+        memberTypes: ['Contact'],
+        take: uniqueIds.length,
+        responseGroup: 'Full',
+      };
+
+      const response = await this.client.post<{ results?: Contact[] }>(
+        '/api/members/search',
+        searchCriteria
+      );
+
+      if (response.success && response.data?.results) {
+        for (const contact of response.data.results) {
+          if (contact.id) {
+            customerMap.set(contact.id, contact);
+          }
+        }
+      }
+    } catch {
+      // Return empty map on error - orders will use fallback data
+    }
+
+    return customerMap;
+  }
+
+  /**
+   * Transform a VirtoCommerce Contact to MCP Customer
+   */
+  contactToMcpCustomer(contact: Contact): Customer {
+    return this.transformer.fromContact(contact);
   }
 
   async getCustomers(input: GetCustomersInput): Promise<FulfillmentToolResult<{ customers: Customer[] }>> {

@@ -2,7 +2,7 @@
  * Fulfillment/Shipment transformation utilities
  */
 
-import type { Fulfillment, FulfillOrderInput, Address } from '@cof-org/mcp';
+import type { Fulfillment, FulfillOrderInput } from '@cof-org/mcp';
 import type { YourFulfillmentShipment } from '../types.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';

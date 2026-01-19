@@ -5,6 +5,7 @@
 
 export {
   mapOrderFilters,
+  mapOrderFiltersToSearchCriteria,
   mapInventoryFilters,
   mapProductFilters,
   mapProductVariantFilters,

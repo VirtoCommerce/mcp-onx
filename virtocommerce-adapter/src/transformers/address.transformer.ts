@@ -4,7 +4,7 @@
 
 import type { Address, CustomerAddress } from '@cof-org/mcp';
 import type { YourFulfillmentAddress } from '../types.js';
-import type { Address as VirtoAddress } from '../models/customer-order.js';
+import type { Address as VirtoAddress } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 
 export class AddressTransformer extends BaseTransformer {

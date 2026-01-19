@@ -12,9 +12,55 @@ import type {
   GetFulfillmentsInput,
   GetReturnsInput,
 } from '@cof-org/mcp';
+import type { CustomerOrderSearchCriteria } from '../models/index.js';
 
 /**
- * Map GetOrdersInput to API query parameters
+ * Map GetOrdersInput to VirtoCommerce CustomerOrderSearchCriteria
+ */
+export function mapOrderFiltersToSearchCriteria(input: GetOrdersInput): CustomerOrderSearchCriteria {
+  const criteria: CustomerOrderSearchCriteria = {};
+
+  // Map order IDs
+  if (input.ids?.length) {
+    criteria.objectIds = input.ids;
+  }
+
+  // Map external IDs to numbers (VirtoCommerce uses 'numbers' for order numbers)
+  if (input.externalIds?.length) {
+    criteria.numbers = input.externalIds;
+  }
+
+  // Map statuses
+  if (input.statuses?.length) {
+    criteria.statuses = input.statuses;
+  }
+
+  // Map names (order numbers)
+  if (input.names?.length) {
+    criteria.numbers = [...(criteria.numbers ?? []), ...input.names];
+  }
+
+  // Map date filters
+  if (input.createdAtMin) {
+    criteria.startDate = input.createdAtMin;
+  }
+  if (input.createdAtMax) {
+    criteria.endDate = input.createdAtMax;
+  }
+
+  // Map pagination
+  criteria.skip = input.skip ?? 0;
+  criteria.take = input.pageSize ?? 20;
+
+  // Set response group for full data
+  criteria.responseGroup = 'Full';
+
+  return criteria;
+}
+
+/**
+ * @deprecated Use mapOrderFiltersToSearchCriteria instead
+ * Map GetOrdersInput to generic API query parameters (legacy)
  */
 export function mapOrderFilters(input: GetOrdersInput): Record<string, unknown> {
   return {

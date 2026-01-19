@@ -11,7 +11,7 @@ import type {
   UpdateOrderInput,
 } from '@cof-org/mcp';
 import { STATUS_MAP } from '../types.js';
-import type { CustomerOrder, LineItem } from '../models/customer-order.js';
+import type { CustomerOrder, LineItem, DynamicObjectProperty, Contact } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';
 import { CustomerTransformer } from './customer.transformer.js';
@@ -40,25 +40,34 @@ export class OrderTransformer extends BaseTransformer {
 
   /**
    * Transform VirtoCommerce order to MCP Order format
+   * @param order - The VirtoCommerce CustomerOrder
+   * @param contact - Optional loaded Contact for the customer (if available)
    */
-  toMcpOrder(order: CustomerOrder): Order {
+  toMcpOrder(order: CustomerOrder, contact?: Contact): Order {
     const shippingAddress = order.shipments
       ?.map((x) => x.deliveryAddress)
       .find((x) => x);
 
+    const orderId = order.id ?? '';
+
+    // Use loaded contact if available, otherwise fall back to order data
+    const customer = contact
+      ? this.customerTransformer.fromContact(contact)
+      : this.customerTransformer.fromOrder(order);
+
     return {
-      id: order.id,
-      externalId: order.id,
-      name: order.number,
-      status: this.mapOrderStatus(order.status),
+      id: orderId,
+      externalId: orderId,
+      name: order.number ?? '',
+      status: this.mapOrderStatus(order.status ?? ''),
       totalPrice: order.total,
       currency: order.currency,
-      customer: this.customerTransformer.fromOrder(order),
+      customer,
       shippingAddress: this.addressTransformer.toMcpAddress(shippingAddress),
       billingAddress: this.addressTransformer.toMcpAddress(order.addresses?.[0]),
-      lineItems: order.items?.map((item, index) => this.toOrderLineItem(order.id, item, index)),
-      createdAt: order.createdDate,
-      updatedAt: order.modifiedDate,
+      lineItems: order.items?.map((item, index) => this.toOrderLineItem(orderId, item, index)) ?? [],
+      createdAt: order.createdDate ?? this.now(),
+      updatedAt: order.modifiedDate ?? this.now(),
       tenantId: this.tenantId,
       customFields: this.transformDynamicProperties(order.dynamicProperties),
       orderNote: order.comment,
@@ -66,10 +75,15 @@ export class OrderTransformer extends BaseTransformer {
   }
 
   /**
-   * Transform multiple orders
+   * Transform multiple orders with optional customer data
+   * @param orders - Array of VirtoCommerce CustomerOrders
+   * @param customerMap - Optional map of customer IDs to Contact objects
    */
-  toMcpOrders(orders: CustomerOrder[]): Order[] {
-    return orders.map((order) => this.toMcpOrder(order));
+  toMcpOrders(orders: CustomerOrder[], customerMap?: Map<string, Contact>): Order[] {
+    return orders.map((order) => {
+      const contact = order.customerId ? customerMap?.get(order.customerId) : undefined;
+      return this.toMcpOrder(order, contact);
+    });
   }
 
   /**
@@ -156,13 +170,17 @@ export class OrderTransformer extends BaseTransformer {
    * Transform line item from VirtoCommerce format
    */
   private toOrderLineItem(orderId: string, item: LineItem, index: number): OrderLineItem {
+    const sku = item.sku ?? '';
+    const quantity = item.quantity ?? 0;
+    const price = item.price ?? 0;
+
     return {
-      id: item.id ?? `${orderId}-${item.sku}-${index}`,
-      sku: item.sku,
-      quantity: item.quantity,
-      unitPrice: item.price,
-      totalPrice: item.extendedPrice ?? item.price * item.quantity,
-      name: item.name,
+      id: item.id ?? `${orderId}-${sku}-${index}`,
+      sku,
+      quantity,
+      unitPrice: price,
+      totalPrice: item.extendedPrice ?? price * quantity,
+      name: item.name ?? '',
     };
   }
 
@@ -170,7 +188,7 @@ export class OrderTransformer extends BaseTransformer {
    * Transform dynamic properties to custom fields
    */
   private transformDynamicProperties(
-    properties?: CustomerOrder['dynamicProperties']
+    properties?: DynamicObjectProperty[]
   ): CustomField[] | undefined {
     if (!properties?.length) {
       return undefined;
@@ -179,8 +197,8 @@ export class OrderTransformer extends BaseTransformer {
     const entries = properties
       .filter((prop) => prop.values?.length)
       .map((prop) => ({
-        name: prop.name,
-        value: String(prop.values[0]?.value ?? ''),
+        name: prop.name ?? '',
+        value: String(prop.values?.[0]?.value ?? ''),
       }));
 
     return entries.length ? entries : undefined;

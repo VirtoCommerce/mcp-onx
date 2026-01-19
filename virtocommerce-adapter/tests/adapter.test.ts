@@ -5,8 +5,8 @@
  * Replace with actual tests for your Fulfillment integration.
  */
 
-import { jest } from '@jest/globals';
-import { YourFulfillmentAdapter } from '../src/adapter.js';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { VirtoCommerceFulfillmentAdapter } from '../src/adapter.js';
 import { ApiClient } from '../src/utils/api-client.js';
 import type {
   CreateSalesOrderInput,
@@ -16,8 +16,8 @@ import type {
   GetInventoryInput,
 } from '@cof-org/mcp';
 
-describe('YourFulfillmentAdapter', () => {
-  let adapter: YourFulfillmentAdapter;
+describe('VirtoCommerceFulfillmentAdapter', () => {
+  let adapter: VirtoCommerceFulfillmentAdapter;
   let mockApiClient: ApiClient;
   let getSpy: jest.MockedFunction<any>;
   let postSpy: jest.MockedFunction<any>;
@@ -25,9 +25,9 @@ describe('YourFulfillmentAdapter', () => {
 
   beforeEach(() => {
     // Create adapter instance
-    adapter = new YourFulfillmentAdapter({
-      apiUrl: 'https://api.test.yourfulfillment.com',
-      apiKey: 'test-api-key',
+    adapter = new VirtoCommerceFulfillmentAdapter({
+      apiUrl: 'https://localhost:5001',
+      apiKey: '76bf85d9-196e-4d4a-a6d7-6765102361c9',
       workspace: 'test-workspace',
       timeout: 5000,
       debugMode: false,

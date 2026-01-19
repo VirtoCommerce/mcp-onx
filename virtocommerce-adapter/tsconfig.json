@@ -6,7 +6,8 @@
       "ES2022"
     ],
     "types": [
-      "node"
+      "node",
+      "jest"
     ],
     "outDir": "./dist",
     "rootDir": "./src",
@@ -44,7 +45,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "tests"
+    "dist"
   ]
 }
