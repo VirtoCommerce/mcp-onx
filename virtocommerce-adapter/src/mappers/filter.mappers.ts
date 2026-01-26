@@ -22,7 +22,11 @@ export function mapOrderFiltersToSearchCriteria(input: GetOrdersInput): Customer
 
   // Map order IDs
   if (input.ids?.length) {
-    criteria.objectIds = input.ids;
+    criteria.ids = input.ids;
+  }
+
+  if (input.externalIds?.length) {
+    criteria.outerIds = input.externalIds;
   }
 
   // Map external IDs to numbers (VirtoCommerce uses 'numbers' for order numbers)

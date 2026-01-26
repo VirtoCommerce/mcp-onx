@@ -34,6 +34,8 @@ export interface SearchResult<T> {
  * Customer order search criteria
  */
 export interface CustomerOrderSearchCriteria extends SearchCriteriaBase {
+  ids?: string[];
+  outerIds?: string[];
   number?: string;
   numbers?: string[];
   status?: string;

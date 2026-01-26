@@ -6,6 +6,7 @@
  */
 
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { readFileSync } from 'fs';
 import { VirtoCommerceFulfillmentAdapter } from '../src/adapter.js';
 import { ApiClient } from '../src/utils/api-client.js';
 import type {
@@ -15,6 +16,10 @@ import type {
   GetOrdersInput,
   GetInventoryInput,
 } from '@cof-org/mcp';
+
+function readResponse(path: string) {
+  return readFileSync(new URL(`./fixtures/${path}.json`, import.meta.url), 'utf-8');
+}
 
 describe('VirtoCommerceFulfillmentAdapter', () => {
   let adapter: VirtoCommerceFulfillmentAdapter;
@@ -330,29 +335,10 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
   describe('Query Operations', () => {
     describe('getOrders', () => {
       it('should get orders by IDs', async () => {
-        getSpy.mockResolvedValue({
+        const response = readResponse('getOrders/getOrdersByIdResponse');
+        postSpy.mockResolvedValue({
           success: true,
-          data: [
-            {
-              id: 'ORDER-001',
-              number: 'ORD-2024-001',
-              external_id: 'EXT-001',
-              status: 'processing',
-              customer: {
-                id: 'CUST-001',
-                email: 'test@example.com',
-                first_name: 'John',
-                last_name: 'Doe',
-              },
-              items: [],
-              total: 100.0,
-              currency: 'USD',
-              created_at: '2024-01-01T00:00:00Z',
-              updated_at: '2024-01-01T00:00:00Z',
-              shipping_address: {},
-              billing_address: {},
-            },
-          ],
+          data: JSON.parse(response),
         });
 
         const input: GetOrdersInput = {
@@ -365,35 +351,16 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         if (result.success) {
           expect(result.orders).toHaveLength(1);
           expect(result.orders[0]?.id).toBe('ORDER-001');
-          expect(result.orders[0]?.status).toBe('processing');
+          expect(result.orders[0]?.status).toBe('pending');
         }
-        expect(getSpy).toHaveBeenCalledWith('/orders', expect.any(Object));
+        expect(postSpy).toHaveBeenCalledWith('/api/order/customerOrders/search', expect.any(Object));
       });
 
       it('should get orders by external IDs', async () => {
-        getSpy.mockResolvedValue({
+        const response = readResponse('getOrders/getOrdersByIdResponse');
+        postSpy.mockResolvedValue({
           success: true,
-          data: [
-            {
-              id: 'ORDER-001',
-              number: 'ORD-2024-001',
-              external_id: 'EXT-001',
-              status: 'processing',
-              customer: {
-                id: 'CUST-001',
-                email: 'test@example.com',
-                first_name: 'John',
-                last_name: 'Doe',
-              },
-              items: [],
-              total: 100.0,
-              currency: 'USD',
-              created_at: '2024-01-01T00:00:00Z',
-              updated_at: '2024-01-01T00:00:00Z',
-              shipping_address: {},
-              billing_address: {},
-            },
-          ],
+          data: JSON.parse(response),
         });
 
         const input: GetOrdersInput = {
@@ -410,7 +377,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should handle empty results', async () => {
-        getSpy.mockResolvedValue({
+        postSpy.mockResolvedValue({
           success: true,
           data: [],
         });

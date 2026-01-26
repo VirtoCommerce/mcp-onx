@@ -57,7 +57,7 @@ export class OrderTransformer extends BaseTransformer {
 
     return {
       id: orderId,
-      externalId: orderId,
+      externalId: order.outerId,
       name: order.number ?? '',
       status: this.mapOrderStatus(order.status ?? ''),
       totalPrice: order.total,

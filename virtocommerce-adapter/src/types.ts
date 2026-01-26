@@ -138,8 +138,8 @@ export interface YourFulfillmentShipment {
 
 // Status mapping configuration
 export const STATUS_MAP: Record<string, string> = {
-  new: 'pending',
-  processing: 'processing',
+  New: 'pending',
+  Processing: 'processing',
   shipped: 'shipped',
   delivered: 'delivered',
   cancelled: 'cancelled',
