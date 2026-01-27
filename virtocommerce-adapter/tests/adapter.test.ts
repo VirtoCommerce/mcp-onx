@@ -1288,57 +1288,224 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
     });
 
     describe('getInventory', () => {
-      it('should get inventory for SKUs', async () => {
-        getSpy.mockResolvedValue({
+      it('should get inventory for SKUs across multiple fulfillment centers', async () => {
+        // Mock step 1: catalog search to resolve SKUs → product IDs
+        postSpy.mockResolvedValueOnce({
           success: true,
-          data: [
-            {
-              sku: 'PROD-001',
-              available: 100,
-              reserved: 10,
-              total: 110,
-              warehouse_locations: [
-                { location_id: 'LOC-001', available: 60, reserved: 5 },
-                { location_id: 'LOC-002', available: 40, reserved: 5 },
-              ],
-              updated_at: '2024-01-01T00:00:00Z',
-            },
-          ],
+          data: {
+            totalCount: 2,
+            results: [
+              { id: 'PROD-001', code: 'BOLT-SM' },
+              { id: 'PROD-002', code: 'NUT-SM' },
+            ],
+          },
+        });
+
+        // Mock step 2: inventory search for those product IDs
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 3,
+            results: [
+              {
+                productId: 'PROD-001',
+                fulfillmentCenterId: 'FC-001',
+                fulfillmentCenterName: 'Main Warehouse',
+                inStockQuantity: 100,
+                reservedQuantity: 15,
+                status: 'Enabled',
+              },
+              {
+                productId: 'PROD-001',
+                fulfillmentCenterId: 'FC-002',
+                fulfillmentCenterName: 'East Warehouse',
+                inStockQuantity: 50,
+                reservedQuantity: 5,
+                status: 'Enabled',
+              },
+              {
+                productId: 'PROD-002',
+                fulfillmentCenterId: 'FC-001',
+                fulfillmentCenterName: 'Main Warehouse',
+                inStockQuantity: 200,
+                reservedQuantity: 20,
+                status: 'Enabled',
+              },
+            ],
+          },
         });
 
         const input: GetInventoryInput = {
-          skus: ['PROD-001'],
+          skus: ['BOLT-SM', 'NUT-SM'],
         };
 
         const result = await adapter.getInventory(input);
 
         expect(result.success).toBe(true);
         if (result.success) {
-          expect(result.inventory.length).toBeGreaterThan(0);
-          expect(result.inventory[0]?.sku).toBe('PROD-001');
-          expect(result.inventory[0]?.available).toBe(60);
-          expect(result.inventory[0]?.locationId).toBe('LOC-001');
+          expect(result.inventory).toHaveLength(3);
+
+          // BOLT-SM at Main Warehouse
+          const boltMain = result.inventory.find(
+            (i) => i.sku === 'BOLT-SM' && i.locationId === 'FC-001'
+          );
+          expect(boltMain).toBeDefined();
+          expect(boltMain?.available).toBe(85); // 100 - 15
+          expect(boltMain?.onHand).toBe(100);
+          expect(boltMain?.unavailable).toBe(15);
+
+          // BOLT-SM at East Warehouse
+          const boltEast = result.inventory.find(
+            (i) => i.sku === 'BOLT-SM' && i.locationId === 'FC-002'
+          );
+          expect(boltEast).toBeDefined();
+          expect(boltEast?.available).toBe(45); // 50 - 5
+
+          // NUT-SM at Main Warehouse
+          const nutMain = result.inventory.find(
+            (i) => i.sku === 'NUT-SM' && i.locationId === 'FC-001'
+          );
+          expect(nutMain).toBeDefined();
+          expect(nutMain?.available).toBe(180); // 200 - 20
         }
+
+        // Verify catalog search was called first
+        expect(postSpy).toHaveBeenNthCalledWith(
+          1,
+          '/api/catalog/search/products',
+          expect.objectContaining({
+            codes: ['BOLT-SM', 'NUT-SM'],
+            searchInVariations: true,
+          })
+        );
+
+        // Verify inventory search was called second
+        expect(postSpy).toHaveBeenNthCalledWith(
+          2,
+          '/api/inventory/search',
+          expect.objectContaining({
+            productIds: ['PROD-001', 'PROD-002'],
+          })
+        );
       });
 
-      it('should handle inventory lookup failure', async () => {
-        getSpy.mockResolvedValue({
-          success: false,
-          error: {
-            code: 'NOT_FOUND',
-            message: 'SKU not found',
+      it('should filter inventory by location IDs', async () => {
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [{ id: 'PROD-001', code: 'BOLT-SM' }],
+          },
+        });
+
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                productId: 'PROD-001',
+                fulfillmentCenterId: 'FC-002',
+                inStockQuantity: 50,
+                reservedQuantity: 5,
+              },
+            ],
           },
         });
 
         const input: GetInventoryInput = {
-          skus: ['INVALID-SKU'],
+          skus: ['BOLT-SM'],
+          locationIds: ['FC-002'],
+        };
+
+        const result = await adapter.getInventory(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.inventory).toHaveLength(1);
+          expect(result.inventory[0]?.locationId).toBe('FC-002');
+        }
+
+        expect(postSpy).toHaveBeenNthCalledWith(
+          2,
+          '/api/inventory/search',
+          expect.objectContaining({
+            fulfillmentCenterIds: ['FC-002'],
+          })
+        );
+      });
+
+      it('should return empty inventory when SKUs not found in catalog', async () => {
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 0,
+            results: [],
+          },
+        });
+
+        const input: GetInventoryInput = {
+          skus: ['NON-EXISTENT'],
+        };
+
+        const result = await adapter.getInventory(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.inventory).toHaveLength(0);
+        }
+
+        // Should NOT call inventory search if no products found
+        expect(postSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('should handle catalog search failure', async () => {
+        postSpy.mockResolvedValueOnce({
+          success: false,
+          error: {
+            code: 'API_ERROR',
+            message: 'Catalog service unavailable',
+          },
+        });
+
+        const input: GetInventoryInput = {
+          skus: ['BOLT-SM'],
         };
 
         const result = await adapter.getInventory(input);
 
         expect(result.success).toBe(false);
         if (!result.success) {
-          expect(result.error).toBeDefined();
+          expect(result.message).toContain('resolve product SKUs');
+        }
+      });
+
+      it('should handle inventory search failure', async () => {
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [{ id: 'PROD-001', code: 'BOLT-SM' }],
+          },
+        });
+
+        postSpy.mockResolvedValueOnce({
+          success: false,
+          error: {
+            code: 'API_ERROR',
+            message: 'Inventory service unavailable',
+          },
+        });
+
+        const input: GetInventoryInput = {
+          skus: ['BOLT-SM'],
+        };
+
+        const result = await adapter.getInventory(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('fetch inventory');
         }
       });
     });

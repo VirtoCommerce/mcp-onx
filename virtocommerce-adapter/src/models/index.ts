@@ -115,6 +115,15 @@ export type {
   ProductSearchResult,
 } from './catalog.js';
 
+// Inventory models
+export type {
+  InventoryInfo,
+  InventoryStatus,
+  InventorySearchCriteria,
+  InventorySearchResult,
+  ProductInventoryInfo,
+} from './inventory.js';
+
 // Search models
 export type {
   SearchCriteriaBase,

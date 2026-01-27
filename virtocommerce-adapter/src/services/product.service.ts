@@ -11,14 +11,17 @@ import type {
   GetProductVariantsInput,
   GetInventoryInput,
 } from '@cof-org/mcp';
-import type { YourFulfillmentInventory } from '../types.js';
-import type { ProductSearchResult } from '../models/index.js';
+import type {
+  ProductSearchResult,
+  CatalogProduct,
+  InventorySearchResult,
+  InventorySearchCriteria,
+} from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { ProductTransformer } from '../transformers/product.transformer.js';
 import {
   mapProductFiltersToSearchCriteria,
   mapProductVariantFiltersToSearchCriteria,
-  mapInventoryFilters,
 } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
 import { ApiClient } from '../utils/api-client.js';
@@ -95,19 +98,66 @@ export class ProductService extends BaseService {
     input: GetInventoryInput
   ): Promise<FulfillmentToolResult<{ inventory: InventoryItem[] }>> {
     try {
-      const response = await this.client.get<YourFulfillmentInventory[] | YourFulfillmentInventory>(
-        '/inventory',
-        mapInventoryFilters(input)
+      // Step 1: Resolve SKUs to product IDs via catalog search
+      const catalogResponse = await this.client.post<ProductSearchResult>(
+        '/api/catalog/search/products',
+        {
+          codes: input.skus,
+          responseGroup: 'ItemInfo',
+          searchInVariations: true,
+          take: input.skus.length,
+        }
       );
 
-      if (!response.success) {
+      if (!catalogResponse.success) {
         return this.failure<{ inventory: InventoryItem[] }>(
-          'Failed to fetch inventory',
-          response.error ?? response
+          'Failed to resolve product SKUs',
+          catalogResponse.error ?? catalogResponse
         );
       }
 
-      const inventory = this.transformer.toMcpInventory(this.ensureArray(response.data));
+      const products = catalogResponse.data?.results ?? [];
+      if (!products.length) {
+        return this.success<{ inventory: InventoryItem[] }>({ inventory: [] });
+      }
+
+      // Build SKU map: productId → SKU code
+      const skuMap = new Map<string, string>();
+      for (const product of products) {
+        if (product.id && product.code) {
+          skuMap.set(product.id, product.code);
+        }
+      }
+
+      const productIds = products
+        .map((p: CatalogProduct) => p.id)
+        .filter((id): id is string => !!id);
+
+      // Step 2: Query inventory for resolved product IDs
+      const inventoryCriteria: InventorySearchCriteria = {
+        productIds,
+        take: productIds.length * 10, // Allow multiple locations per product
+      };
+
+      if (input.locationIds?.length) {
+        inventoryCriteria.fulfillmentCenterIds = input.locationIds;
+      }
+
+      const inventoryResponse = await this.client.post<InventorySearchResult>(
+        '/api/inventory/search',
+        inventoryCriteria
+      );
+
+      if (!inventoryResponse.success) {
+        return this.failure<{ inventory: InventoryItem[] }>(
+          'Failed to fetch inventory',
+          inventoryResponse.error ?? inventoryResponse
+        );
+      }
+
+      const inventoryRecords = inventoryResponse.data?.results ?? [];
+      const inventory = this.transformer.fromInventoryInfos(inventoryRecords, skuMap);
+
       return this.success<{ inventory: InventoryItem[] }>({ inventory });
     } catch (error: unknown) {
       return this.failure<{ inventory: InventoryItem[] }>(

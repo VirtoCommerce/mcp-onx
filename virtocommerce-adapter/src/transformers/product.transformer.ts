@@ -3,8 +3,7 @@
  */
 
 import type { Product, ProductVariant, InventoryItem } from '@cof-org/mcp';
-import type { YourFulfillmentInventory } from '../types.js';
-import type { CatalogProduct, ProductProperty } from '../models/index.js';
+import type { CatalogProduct, ProductProperty, InventoryInfo } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 
 export class ProductTransformer extends BaseTransformer {
@@ -169,38 +168,40 @@ export class ProductTransformer extends BaseTransformer {
   }
 
   /**
-   * Transform YourFulfillment inventory to MCP InventoryItem array
-   * Handles both single location and multi-location inventory
+   * Transform a VirtoCommerce InventoryInfo to an MCP InventoryItem.
+   * Requires the product SKU to be passed in because InventoryInfo
+   * only stores productId, not the SKU code.
    */
-  toMcpInventoryItems(inventory: YourFulfillmentInventory): InventoryItem[] {
-    if (inventory.warehouse_locations?.length) {
-      return inventory.warehouse_locations.map((location) => ({
-        locationId: location.location_id,
-        sku: inventory.sku,
-        available: location.available,
-        onHand: location.available + location.reserved,
-        unavailable: location.reserved,
-        tenantId: this.tenantId,
-      }));
-    }
+  fromInventoryInfo(info: InventoryInfo, sku: string): InventoryItem {
+    const inStock = info.inStockQuantity ?? 0;
+    const reserved = info.reservedQuantity ?? 0;
+    const available = inStock - reserved;
 
-    return [
-      {
-        locationId: '',
-        sku: inventory.sku,
-        available: inventory.available,
-        onHand: inventory.total,
-        unavailable: inventory.total - inventory.available,
-        tenantId: this.tenantId,
-      },
-    ];
+    return {
+      sku,
+      locationId: info.fulfillmentCenterId ?? '',
+      available: Math.max(available, 0),
+      onHand: inStock,
+      unavailable: reserved,
+      tenantId: this.tenantId,
+    };
   }
 
   /**
-   * Transform multiple inventory records
+   * Transform multiple VirtoCommerce InventoryInfo records.
+   * Each record represents stock for one product at one fulfillment center.
+   *
+   * @param records - InventoryInfo records from VirtoCommerce
+   * @param skuMap  - Map of productId → SKU for resolving codes
    */
-  toMcpInventory(inventoryItems: YourFulfillmentInventory[]): InventoryItem[] {
-    return inventoryItems.flatMap((item) => this.toMcpInventoryItems(item));
+  fromInventoryInfos(records: InventoryInfo[], skuMap: Map<string, string>): InventoryItem[] {
+    return records
+      .map((info) => {
+        const sku = info.productId ? skuMap.get(info.productId) : undefined;
+        if (!sku) return undefined;
+        return this.fromInventoryInfo(info, sku);
+      })
+      .filter((item): item is InventoryItem => item != null);
   }
 
   /**
