@@ -17,6 +17,7 @@ import type {
   GetInventoryInput,
   GetCustomersInput,
   GetProductsInput,
+  GetProductVariantsInput,
 } from '@cof-org/mcp';
 
 function readResponse(path: string) {
@@ -795,6 +796,254 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         expect(result.success).toBe(true);
         if (result.success) {
           expect(result.products[0]?.status).toBe('inactive');
+        }
+      });
+    });
+
+    describe('getProductVariants', () => {
+      it('should get variants by parent product IDs', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'PROD-001',
+                code: 'BOLT-BASE',
+                name: 'Stainless Steel Bolt',
+                isActive: true,
+                isBuyable: true,
+                variations: [
+                  {
+                    id: 'VAR-001',
+                    code: 'BOLT-SM',
+                    name: 'Stainless Steel Bolt - Small',
+                    mainProductId: 'PROD-001',
+                    outerId: 'EXT-VAR-001',
+                    gtin: '0012345678901',
+                    trackInventory: true,
+                    weight: 0.5,
+                    weightUnit: 'kg',
+                    length: 5,
+                    width: 1,
+                    height: 1,
+                    measureUnit: 'cm',
+                    images: [
+                      { url: 'https://example.com/bolt-sm.jpg' },
+                    ],
+                    properties: [
+                      {
+                        name: 'Size',
+                        type: 'Variation',
+                        values: [{ value: 'Small' }],
+                      },
+                      {
+                        name: 'Color',
+                        type: 'Variation',
+                        values: [{ value: 'Silver' }],
+                      },
+                      {
+                        name: 'Finish',
+                        type: 'Product',
+                        values: [{ value: 'Polished' }],
+                      },
+                    ],
+                    createdDate: '2024-01-01T00:00:00Z',
+                    modifiedDate: '2024-03-01T00:00:00Z',
+                  },
+                  {
+                    id: 'VAR-002',
+                    code: 'BOLT-LG',
+                    name: 'Stainless Steel Bolt - Large',
+                    mainProductId: 'PROD-001',
+                    weight: 1.2,
+                    weightUnit: 'kg',
+                    properties: [
+                      {
+                        name: 'Size',
+                        type: 'Variation',
+                        values: [{ value: 'Large' }],
+                      },
+                      {
+                        name: 'Color',
+                        type: 'Variation',
+                        values: [{ value: 'Silver' }],
+                      },
+                    ],
+                    createdDate: '2024-01-01T00:00:00Z',
+                    modifiedDate: '2024-03-01T00:00:00Z',
+                  },
+                ],
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-06-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetProductVariantsInput = {
+          productIds: ['PROD-001'],
+        };
+
+        const result = await adapter.getProductVariants(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.productVariants).toHaveLength(2);
+
+          const variant1 = result.productVariants[0]!;
+          expect(variant1.id).toBe('VAR-001');
+          expect(variant1.productId).toBe('PROD-001');
+          expect(variant1.sku).toBe('BOLT-SM');
+          expect(variant1.title).toBe('Stainless Steel Bolt - Small');
+          expect(variant1.externalId).toBe('EXT-VAR-001');
+          expect(variant1.externalProductId).toBe('BOLT-BASE');
+          expect(variant1.barcode).toBe('0012345678901');
+          expect(variant1.selectedOptions).toEqual([
+            { name: 'Size', value: 'Small' },
+            { name: 'Color', value: 'Silver' },
+          ]);
+          expect(variant1.weight).toEqual({ value: 0.5, unit: 'kg' });
+          expect(variant1.dimensions).toEqual({ length: 5, width: 1, height: 1, unit: 'cm' });
+          expect(variant1.imageURLs).toEqual(['https://example.com/bolt-sm.jpg']);
+          expect(variant1.customFields).toEqual([{ name: 'Finish', value: 'Polished' }]);
+
+          const variant2 = result.productVariants[1]!;
+          expect(variant2.id).toBe('VAR-002');
+          expect(variant2.sku).toBe('BOLT-LG');
+          expect(variant2.weight).toEqual({ value: 1.2, unit: 'kg' });
+        }
+
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/catalog/search/products',
+          expect.objectContaining({
+            objectIds: ['PROD-001'],
+            searchInVariations: false,
+          })
+        );
+      });
+
+      it('should get variants by SKUs', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'VAR-001',
+                code: 'BOLT-SM',
+                name: 'Stainless Steel Bolt - Small',
+                mainProductId: 'PROD-001',
+                isActive: true,
+                isBuyable: true,
+                properties: [
+                  {
+                    name: 'Size',
+                    type: 'Variation',
+                    values: [{ value: 'Small' }],
+                  },
+                ],
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetProductVariantsInput = {
+          skus: ['BOLT-SM'],
+        };
+
+        const result = await adapter.getProductVariants(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.productVariants).toHaveLength(1);
+          expect(result.productVariants[0]?.sku).toBe('BOLT-SM');
+          expect(result.productVariants[0]?.productId).toBe('PROD-001');
+        }
+
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/catalog/search/products',
+          expect.objectContaining({
+            codes: ['BOLT-SM'],
+            searchInVariations: true,
+          })
+        );
+      });
+
+      it('should handle product without variations as single variant', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'PROD-SIMPLE',
+                code: 'SIMPLE-001',
+                name: 'Simple Product',
+                isActive: true,
+                isBuyable: true,
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetProductVariantsInput = {
+          productIds: ['PROD-SIMPLE'],
+        };
+
+        const result = await adapter.getProductVariants(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.productVariants).toHaveLength(1);
+          expect(result.productVariants[0]?.id).toBe('PROD-SIMPLE');
+          expect(result.productVariants[0]?.sku).toBe('SIMPLE-001');
+        }
+      });
+
+      it('should handle empty variant results', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 0,
+            results: [],
+          },
+        });
+
+        const input: GetProductVariantsInput = {
+          productIds: ['NON-EXISTENT'],
+        };
+
+        const result = await adapter.getProductVariants(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.productVariants).toHaveLength(0);
+        }
+      });
+
+      it('should handle variant search failure', async () => {
+        postSpy.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'API_ERROR',
+            message: 'Catalog service unavailable',
+          },
+        });
+
+        const input: GetProductVariantsInput = {
+          skus: ['BOLT-SM'],
+        };
+
+        const result = await adapter.getProductVariants(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error).toBeDefined();
         }
       });
     });

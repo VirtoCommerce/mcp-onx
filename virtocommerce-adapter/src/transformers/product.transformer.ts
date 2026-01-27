@@ -55,13 +55,31 @@ export class ProductTransformer extends BaseTransformer {
    * Transform VirtoCommerce CatalogProduct to MCP ProductVariant format
    */
   fromCatalogProductVariant(variation: CatalogProduct, parentProduct?: CatalogProduct): ProductVariant {
+    const imageURLs = variation.images
+      ?.map((img) => img.url ?? img.relativeUrl)
+      .filter((url): url is string => !!url);
+
+    const selectedOptions = this.extractSelectedOptions(variation);
+
+    const weight = this.extractWeight(variation);
+    const dimensions = this.extractDimensions(variation);
+
     return {
       id: variation.id ?? '',
+      externalId: variation.outerId,
+      externalProductId: parentProduct?.code ?? variation.code,
       productId: variation.mainProductId ?? parentProduct?.id ?? '',
       sku: variation.code ?? '',
+      barcode: variation.gtin,
       title: variation.name ?? parentProduct?.name ?? '',
+      selectedOptions,
       price: undefined,
       currency: undefined,
+      inventoryNotTracked: variation.trackInventory === false ? true : undefined,
+      weight,
+      dimensions,
+      imageURLs: imageURLs?.length ? imageURLs : undefined,
+      customFields: this.extractCustomFields(variation.properties),
       createdAt: variation.createdDate ?? this.now(),
       updatedAt: variation.modifiedDate ?? this.now(),
       tenantId: this.tenantId,
@@ -69,7 +87,9 @@ export class ProductTransformer extends BaseTransformer {
   }
 
   /**
-   * Transform multiple product variations
+   * Transform multiple product variations.
+   * Products with variations return each variation as a separate ProductVariant.
+   * Products without variations are treated as single-variant products.
    */
   fromCatalogProductVariants(products: CatalogProduct[]): ProductVariant[] {
     return products.flatMap((product) => {
@@ -79,6 +99,73 @@ export class ProductTransformer extends BaseTransformer {
       // If no variations, treat the product itself as a variant
       return [this.fromCatalogProductVariant(product)];
     });
+  }
+
+  /**
+   * Extract selected option values from a variation's properties
+   */
+  private extractSelectedOptions(
+    variation: CatalogProduct
+  ): { name: string; value: string }[] | undefined {
+    if (!variation.properties?.length) return undefined;
+
+    const options = variation.properties
+      .filter((p) => p.type === 'Variation' && p.name && p.values?.length)
+      .map((p) => ({
+        name: p.name!,
+        value: String(p.values![0]!.value ?? ''),
+      }))
+      .filter((o) => o.value);
+
+    return options.length ? options : undefined;
+  }
+
+  /**
+   * Extract weight from VirtoCommerce product dimensions
+   */
+  private extractWeight(
+    product: CatalogProduct
+  ): { value: number; unit: 'lb' | 'oz' | 'kg' | 'g' } | undefined {
+    if (product.weight == null) return undefined;
+
+    const unitMap: Record<string, 'lb' | 'oz' | 'kg' | 'g'> = {
+      lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
+      oz: 'oz', ounce: 'oz', ounces: 'oz',
+      kg: 'kg', kilogram: 'kg', kilograms: 'kg',
+      g: 'g', gram: 'g', grams: 'g',
+    };
+
+    const rawUnit = (product.weightUnit ?? 'kg').toLowerCase();
+    const unit = unitMap[rawUnit] ?? 'kg';
+
+    return { value: product.weight, unit };
+  }
+
+  /**
+   * Extract dimensions from VirtoCommerce product
+   */
+  private extractDimensions(
+    product: CatalogProduct
+  ): { length: number; width: number; height: number; unit: 'cm' | 'in' | 'ft' } | undefined {
+    if (product.length == null && product.width == null && product.height == null) {
+      return undefined;
+    }
+
+    const unitMap: Record<string, 'cm' | 'in' | 'ft'> = {
+      cm: 'cm', centimeter: 'cm', centimeters: 'cm',
+      in: 'in', inch: 'in', inches: 'in',
+      ft: 'ft', foot: 'ft', feet: 'ft',
+    };
+
+    const rawUnit = (product.measureUnit ?? 'cm').toLowerCase();
+    const unit = unitMap[rawUnit] ?? 'cm';
+
+    return {
+      length: product.length ?? 0,
+      width: product.width ?? 0,
+      height: product.height ?? 0,
+      unit,
+    };
   }
 
   /**

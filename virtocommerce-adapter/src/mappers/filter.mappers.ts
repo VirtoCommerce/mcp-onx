@@ -131,24 +131,36 @@ export function mapProductFilters(input: GetProductsInput): Record<string, unkno
 }
 
 /**
- * Map GetProductVariantsInput to VirtoCommerce ProductSearchCriteria
+ * Map GetProductVariantsInput to VirtoCommerce ProductSearchCriteria.
+ *
+ * VirtoCommerce treats variations as nested objects under parent products.
+ * - `productIds`: fetch parent products by ID, then extract their variations.
+ * - `ids` / `skus`: search for specific variations directly.
  */
 export function mapProductVariantFiltersToSearchCriteria(input: GetProductVariantsInput): ProductSearchCriteria {
+  const hasProductIds = !!input.productIds?.length;
+  const hasVariantIds = !!input.ids?.length;
+  const hasSkus = !!input.skus?.length;
+
   const criteria: ProductSearchCriteria = {
-    responseGroup: 'ItemInfo,Variations',
-    searchInVariations: true,
+    responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations',
   };
 
-  if (input.ids?.length) {
-    criteria.objectIds = input.ids;
-  }
+  if (hasProductIds && !hasVariantIds && !hasSkus) {
+    // Fetch parent products to extract their variations
+    criteria.objectIds = input.productIds;
+    criteria.searchInVariations = false;
+  } else {
+    // Search for specific variations by ID or SKU
+    criteria.searchInVariations = true;
 
-  if (input.skus?.length) {
-    criteria.codes = input.skus;
-  }
+    if (hasVariantIds) {
+      criteria.objectIds = input.ids;
+    }
 
-  if (input.productIds?.length) {
-    criteria.objectIds = [...(criteria.objectIds ?? []), ...input.productIds];
+    if (hasSkus) {
+      criteria.codes = input.skus;
+    }
   }
 
   criteria.skip = input.skip ?? 0;
