@@ -16,6 +16,7 @@ import type {
   GetOrdersInput,
   GetInventoryInput,
   GetCustomersInput,
+  GetProductsInput,
 } from '@cof-org/mcp';
 
 function readResponse(path: string) {
@@ -580,6 +581,220 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         expect(result.success).toBe(false);
         if (!result.success) {
           expect(result.error).toBeDefined();
+        }
+      });
+    });
+
+    describe('getProducts', () => {
+      it('should get products by IDs', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'PROD-001',
+                code: 'SKU-001',
+                name: 'Stainless Steel Bolt',
+                isActive: true,
+                isBuyable: true,
+                vendor: 'BoltCo',
+                catalogId: 'CAT-001',
+                categoryId: 'CATEG-001',
+                outerId: 'EXT-PROD-001',
+                imgSrc: 'https://example.com/bolt.jpg',
+                images: [
+                  { url: 'https://example.com/bolt.jpg', name: 'Main' },
+                  { url: 'https://example.com/bolt-2.jpg', name: 'Side' },
+                ],
+                reviews: [
+                  { reviewType: 'FullReview', content: 'High-quality stainless steel bolt' },
+                ],
+                categories: [
+                  { id: 'CATEG-001', name: 'Fasteners' },
+                ],
+                properties: [
+                  {
+                    name: 'Material',
+                    type: 'Product',
+                    values: [{ value: 'Stainless Steel' }],
+                  },
+                ],
+                variations: [
+                  {
+                    id: 'VAR-001',
+                    code: 'SKU-001-SM',
+                    name: 'Stainless Steel Bolt - Small',
+                    mainProductId: 'PROD-001',
+                    properties: [
+                      { name: 'Size', type: 'Variation', values: [{ value: 'Small' }] },
+                    ],
+                    createdDate: '2024-01-01T00:00:00Z',
+                    modifiedDate: '2024-01-01T00:00:00Z',
+                  },
+                  {
+                    id: 'VAR-002',
+                    code: 'SKU-001-LG',
+                    name: 'Stainless Steel Bolt - Large',
+                    mainProductId: 'PROD-001',
+                    properties: [
+                      { name: 'Size', type: 'Variation', values: [{ value: 'Large' }] },
+                    ],
+                    createdDate: '2024-01-01T00:00:00Z',
+                    modifiedDate: '2024-01-01T00:00:00Z',
+                  },
+                ],
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-06-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetProductsInput = {
+          ids: ['PROD-001'],
+        };
+
+        const result = await adapter.getProducts(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.products).toHaveLength(1);
+          const product = result.products[0]!;
+          expect(product.id).toBe('PROD-001');
+          expect(product.name).toBe('Stainless Steel Bolt');
+          expect(product.externalProductId).toBe('SKU-001');
+          expect(product.description).toBe('High-quality stainless steel bolt');
+          expect(product.status).toBe('active');
+          expect(product.vendor).toBe('BoltCo');
+          expect(product.categories).toEqual(['Fasteners']);
+          expect(product.imageURLs).toEqual([
+            'https://example.com/bolt.jpg',
+            'https://example.com/bolt-2.jpg',
+          ]);
+          expect(product.options).toEqual([
+            { name: 'Size', values: ['Small', 'Large'] },
+          ]);
+          expect(product.customFields).toEqual([
+            { name: 'Material', value: 'Stainless Steel' },
+          ]);
+        }
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/catalog/search/products',
+          expect.objectContaining({
+            objectIds: ['PROD-001'],
+          })
+        );
+      });
+
+      it('should get products by SKUs', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'PROD-002',
+                code: 'BOLT-42',
+                name: 'Hex Bolt',
+                isActive: true,
+                isBuyable: true,
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetProductsInput = {
+          skus: ['BOLT-42'],
+        };
+
+        const result = await adapter.getProducts(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.products).toHaveLength(1);
+          expect(result.products[0]?.externalProductId).toBe('BOLT-42');
+        }
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/catalog/search/products',
+          expect.objectContaining({
+            codes: ['BOLT-42'],
+          })
+        );
+      });
+
+      it('should handle empty product results', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 0,
+            results: [],
+          },
+        });
+
+        const input: GetProductsInput = {
+          ids: ['NON-EXISTENT'],
+        };
+
+        const result = await adapter.getProducts(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.products).toHaveLength(0);
+        }
+      });
+
+      it('should handle product search failure', async () => {
+        postSpy.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'API_ERROR',
+            message: 'Search service unavailable',
+          },
+        });
+
+        const input: GetProductsInput = {
+          ids: ['PROD-001'],
+        };
+
+        const result = await adapter.getProducts(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error).toBeDefined();
+        }
+      });
+
+      it('should map inactive products correctly', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'PROD-003',
+                code: 'INACTIVE-001',
+                name: 'Discontinued Bolt',
+                isActive: false,
+                isBuyable: false,
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetProductsInput = {
+          ids: ['PROD-003'],
+        };
+
+        const result = await adapter.getProducts(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.products[0]?.status).toBe('inactive');
         }
       });
     });

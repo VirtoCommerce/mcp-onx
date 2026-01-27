@@ -99,6 +99,22 @@ export type {
   RelationType,
 } from './customer.js';
 
+// Catalog models
+export type {
+  CatalogProduct,
+  ProductImage,
+  ProductAsset,
+  ProductProperty,
+  ProductPropertyValue,
+  PropertyDisplayName,
+  CategoryRef,
+  EditorialReview,
+  ProductAssociation,
+  CategoryLink,
+  ProductSearchCriteria,
+  ProductSearchResult,
+} from './catalog.js';
+
 // Search models
 export type {
   SearchCriteriaBase,

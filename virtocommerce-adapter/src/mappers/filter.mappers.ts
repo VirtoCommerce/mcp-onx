@@ -12,7 +12,7 @@ import type {
   GetFulfillmentsInput,
   GetReturnsInput,
 } from '@cof-org/mcp';
-import type { CustomerOrderSearchCriteria, MemberSearchCriteria } from '../models/index.js';
+import type { CustomerOrderSearchCriteria, MemberSearchCriteria, ProductSearchCriteria } from '../models/index.js';
 
 /**
  * Map GetOrdersInput to VirtoCommerce CustomerOrderSearchCriteria
@@ -91,7 +91,31 @@ export function mapInventoryFilters(input: GetInventoryInput): Record<string, un
 }
 
 /**
- * Map GetProductsInput to API query parameters
+ * Map GetProductsInput to VirtoCommerce ProductSearchCriteria
+ */
+export function mapProductFiltersToSearchCriteria(input: GetProductsInput): ProductSearchCriteria {
+  const criteria: ProductSearchCriteria = {
+    responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Links,Variations,Seo',
+    searchInVariations: false,
+  };
+
+  if (input.ids?.length) {
+    criteria.objectIds = input.ids;
+  }
+
+  if (input.skus?.length) {
+    criteria.codes = input.skus;
+  }
+
+  criteria.skip = input.skip ?? 0;
+  criteria.take = input.pageSize ?? 20;
+
+  return criteria;
+}
+
+/**
+ * @deprecated Use mapProductFiltersToSearchCriteria instead
+ * Map GetProductsInput to generic API query parameters (legacy)
  */
 export function mapProductFilters(input: GetProductsInput): Record<string, unknown> {
   return {
@@ -107,7 +131,35 @@ export function mapProductFilters(input: GetProductsInput): Record<string, unkno
 }
 
 /**
- * Map GetProductVariantsInput to API query parameters
+ * Map GetProductVariantsInput to VirtoCommerce ProductSearchCriteria
+ */
+export function mapProductVariantFiltersToSearchCriteria(input: GetProductVariantsInput): ProductSearchCriteria {
+  const criteria: ProductSearchCriteria = {
+    responseGroup: 'ItemInfo,Variations',
+    searchInVariations: true,
+  };
+
+  if (input.ids?.length) {
+    criteria.objectIds = input.ids;
+  }
+
+  if (input.skus?.length) {
+    criteria.codes = input.skus;
+  }
+
+  if (input.productIds?.length) {
+    criteria.objectIds = [...(criteria.objectIds ?? []), ...input.productIds];
+  }
+
+  criteria.skip = input.skip ?? 0;
+  criteria.take = input.pageSize ?? 20;
+
+  return criteria;
+}
+
+/**
+ * @deprecated Use mapProductVariantFiltersToSearchCriteria instead
+ * Map GetProductVariantsInput to generic API query parameters (legacy)
  */
 export function mapProductVariantFilters(input: GetProductVariantsInput): Record<string, unknown> {
   return {

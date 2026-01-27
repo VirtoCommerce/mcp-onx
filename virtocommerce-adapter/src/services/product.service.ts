@@ -11,12 +11,13 @@ import type {
   GetProductVariantsInput,
   GetInventoryInput,
 } from '@cof-org/mcp';
-import type { YourFulfillmentProduct, YourFulfillmentInventory } from '../types.js';
+import type { YourFulfillmentInventory } from '../types.js';
+import type { ProductSearchResult } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { ProductTransformer } from '../transformers/product.transformer.js';
 import {
-  mapProductFilters,
-  mapProductVariantFilters,
+  mapProductFiltersToSearchCriteria,
+  mapProductVariantFiltersToSearchCriteria,
   mapInventoryFilters,
 } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
@@ -36,9 +37,11 @@ export class ProductService extends BaseService {
 
   async getProducts(input: GetProductsInput): Promise<FulfillmentToolResult<{ products: Product[] }>> {
     try {
-      const response = await this.client.get<YourFulfillmentProduct[] | YourFulfillmentProduct>(
-        '/products',
-        mapProductFilters(input)
+      const searchCriteria = mapProductFiltersToSearchCriteria(input);
+
+      const response = await this.client.post<ProductSearchResult>(
+        '/api/catalog/search/products',
+        searchCriteria
       );
 
       if (!response.success) {
@@ -48,7 +51,8 @@ export class ProductService extends BaseService {
         );
       }
 
-      const products = this.transformer.toMcpProducts(this.ensureArray(response.data));
+      const results = response.data?.results ?? [];
+      const products = this.transformer.fromCatalogProducts(results);
       return this.success<{ products: Product[] }>({ products });
     } catch (error: unknown) {
       return this.failure<{ products: Product[] }>(
@@ -62,9 +66,11 @@ export class ProductService extends BaseService {
     input: GetProductVariantsInput
   ): Promise<FulfillmentToolResult<{ productVariants: ProductVariant[] }>> {
     try {
-      const response = await this.client.get<YourFulfillmentProduct[] | YourFulfillmentProduct>(
-        '/products',
-        mapProductVariantFilters(input)
+      const searchCriteria = mapProductVariantFiltersToSearchCriteria(input);
+
+      const response = await this.client.post<ProductSearchResult>(
+        '/api/catalog/search/products',
+        searchCriteria
       );
 
       if (!response.success) {
@@ -74,7 +80,8 @@ export class ProductService extends BaseService {
         );
       }
 
-      const productVariants = this.transformer.toMcpProductVariants(this.ensureArray(response.data));
+      const results = response.data?.results ?? [];
+      const productVariants = this.transformer.fromCatalogProductVariants(results);
       return this.success<{ productVariants: ProductVariant[] }>({ productVariants });
     } catch (error: unknown) {
       return this.failure<{ productVariants: ProductVariant[] }>(
