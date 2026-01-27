@@ -18,6 +18,7 @@ import type {
   GetCustomersInput,
   GetProductsInput,
   GetProductVariantsInput,
+  GetFulfillmentsInput,
 } from '@cof-org/mcp';
 
 function readResponse(path: string) {
@@ -1044,6 +1045,244 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         expect(result.success).toBe(false);
         if (!result.success) {
           expect(result.error).toBeDefined();
+        }
+      });
+    });
+
+    describe('getFulfillments', () => {
+      it('should get fulfillments by order IDs', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'SHIP-001',
+                outerId: 'EXT-SHIP-001',
+                number: 'SHP-2024-001',
+                status: 'Shipped',
+                customerOrderId: 'ORDER-001',
+                fulfillmentCenterId: 'FC-001',
+                fulfillmentCenterName: 'Main Warehouse',
+                trackingNumber: '1Z999AA10123456784',
+                trackingUrl: 'https://tracking.example.com/1Z999AA10123456784',
+                shipmentMethodCode: 'UPS',
+                shipmentMethodOption: 'Ground',
+                shippingMethod: {
+                  code: 'UPS',
+                  name: 'UPS',
+                },
+                price: 12.99,
+                deliveryAddress: {
+                  line1: '123 Main St',
+                  city: 'Springfield',
+                  regionName: 'IL',
+                  postalCode: '62701',
+                  countryName: 'US',
+                  name: 'John Doe',
+                  phone: '+1234567890',
+                },
+                deliveryDate: '2024-01-15T00:00:00Z',
+                items: [
+                  {
+                    id: 'SITEM-001',
+                    lineItemId: 'LI-001',
+                    lineItem: {
+                      sku: 'BOLT-SM',
+                      name: 'Stainless Steel Bolt - Small',
+                    },
+                    quantity: 5,
+                    status: 'Shipped',
+                  },
+                  {
+                    id: 'SITEM-002',
+                    lineItemId: 'LI-002',
+                    lineItem: {
+                      sku: 'NUT-SM',
+                      name: 'Hex Nut - Small',
+                    },
+                    quantity: 10,
+                    status: 'Shipped',
+                  },
+                ],
+                comment: 'Handle with care',
+                createdDate: '2024-01-10T00:00:00Z',
+                modifiedDate: '2024-01-12T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetFulfillmentsInput = {
+          orderIds: ['ORDER-001'],
+        };
+
+        const result = await adapter.getFulfillments(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.fulfillments).toHaveLength(1);
+
+          const fulfillment = result.fulfillments[0]!;
+          expect(fulfillment.id).toBe('SHIP-001');
+          expect(fulfillment.externalId).toBe('EXT-SHIP-001');
+          expect(fulfillment.orderId).toBe('ORDER-001');
+          expect(fulfillment.status).toBe('shipped');
+          expect(fulfillment.trackingNumbers).toEqual(['1Z999AA10123456784']);
+          expect(fulfillment.locationId).toBe('FC-001');
+          expect(fulfillment.shippingCarrier).toBe('UPS');
+          expect(fulfillment.shippingClass).toBe('Ground');
+          expect(fulfillment.shippingCode).toBe('UPS');
+          expect(fulfillment.shippingPrice).toBe(12.99);
+          expect(fulfillment.shippingNote).toBe('https://tracking.example.com/1Z999AA10123456784');
+          expect(fulfillment.expectedDeliveryDate).toBe('2024-01-15T00:00:00Z');
+
+          // Verify address mapping
+          expect(fulfillment.shippingAddress).toBeDefined();
+          expect(fulfillment.shippingAddress?.address1).toBe('123 Main St');
+          expect(fulfillment.shippingAddress?.city).toBe('Springfield');
+
+          // Verify line items
+          expect(fulfillment.lineItems).toHaveLength(2);
+          expect(fulfillment.lineItems[0]?.sku).toBe('BOLT-SM');
+          expect(fulfillment.lineItems[0]?.quantity).toBe(5);
+          expect(fulfillment.lineItems[1]?.sku).toBe('NUT-SM');
+          expect(fulfillment.lineItems[1]?.quantity).toBe(10);
+        }
+
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders/shipments/search',
+          expect.objectContaining({
+            orderIds: ['ORDER-001'],
+            responseGroup: 'Full',
+          })
+        );
+      });
+
+      it('should get fulfillments by IDs', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'SHIP-002',
+                status: 'New',
+                customerOrderId: 'ORDER-002',
+                items: [],
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetFulfillmentsInput = {
+          ids: ['SHIP-002'],
+        };
+
+        const result = await adapter.getFulfillments(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.fulfillments).toHaveLength(1);
+          expect(result.fulfillments[0]?.id).toBe('SHIP-002');
+          expect(result.fulfillments[0]?.status).toBe('pending');
+        }
+
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders/shipments/search',
+          expect.objectContaining({
+            objectIds: ['SHIP-002'],
+          })
+        );
+      });
+
+      it('should handle empty fulfillment results', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 0,
+            results: [],
+          },
+        });
+
+        const input: GetFulfillmentsInput = {
+          orderIds: ['NON-EXISTENT'],
+        };
+
+        const result = await adapter.getFulfillments(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.fulfillments).toHaveLength(0);
+        }
+      });
+
+      it('should handle fulfillment search failure', async () => {
+        postSpy.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'API_ERROR',
+            message: 'Shipment service unavailable',
+          },
+        });
+
+        const input: GetFulfillmentsInput = {
+          orderIds: ['ORDER-001'],
+        };
+
+        const result = await adapter.getFulfillments(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error).toBeDefined();
+        }
+      });
+
+      it('should map all shipment statuses correctly', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 3,
+            results: [
+              {
+                id: 'SHIP-A',
+                status: 'ReadyToShip',
+                customerOrderId: 'ORD-1',
+                items: [],
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+              {
+                id: 'SHIP-B',
+                status: 'Delivered',
+                customerOrderId: 'ORD-2',
+                items: [],
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+              {
+                id: 'SHIP-C',
+                status: 'PickPack',
+                customerOrderId: 'ORD-3',
+                items: [],
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetFulfillmentsInput = {};
+
+        const result = await adapter.getFulfillments(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.fulfillments[0]?.status).toBe('ready_to_ship');
+          expect(result.fulfillments[1]?.status).toBe('delivered');
+          expect(result.fulfillments[2]?.status).toBe('processing');
         }
       });
     });

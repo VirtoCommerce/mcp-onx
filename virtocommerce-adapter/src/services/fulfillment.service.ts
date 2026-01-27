@@ -8,10 +8,10 @@ import type {
   FulfillOrderInput,
   GetFulfillmentsInput,
 } from '@cof-org/mcp';
-import type { YourFulfillmentShipment } from '../types.js';
+import type { Shipment } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { FulfillmentTransformer } from '../transformers/fulfillment.transformer.js';
-import { mapFulfillmentFilters } from '../mappers/filter.mappers.js';
+import { mapFulfillmentFiltersToSearchCriteria } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
 import { ApiClient } from '../utils/api-client.js';
 
@@ -35,7 +35,7 @@ export class FulfillmentService extends BaseService {
     }
 
     try {
-      const response = await this.client.post<YourFulfillmentShipment>(
+      const response = await this.client.post<Shipment>(
         `/orders/${input.orderId}/shipments`,
         this.transformer.fromFulfillOrderInput(input)
       );
@@ -48,7 +48,7 @@ export class FulfillmentService extends BaseService {
       }
 
       return this.success<{ fulfillment: Fulfillment }>({
-        fulfillment: this.transformer.toMcpFulfillment(response.data),
+        fulfillment: this.transformer.fromShipment(response.data),
       });
     } catch (error: unknown) {
       return this.failure<{ fulfillment: Fulfillment }>(
@@ -62,9 +62,11 @@ export class FulfillmentService extends BaseService {
     input: GetFulfillmentsInput
   ): Promise<FulfillmentToolResult<{ fulfillments: Fulfillment[] }>> {
     try {
-      const response = await this.client.get<YourFulfillmentShipment[] | YourFulfillmentShipment>(
-        '/shipments',
-        mapFulfillmentFilters(input)
+      const searchCriteria = mapFulfillmentFiltersToSearchCriteria(input);
+
+      const response = await this.client.post<{ results?: Shipment[]; totalCount?: number }>(
+        '/api/order/customerOrders/shipments/search',
+        searchCriteria
       );
 
       if (!response.success) {
@@ -74,7 +76,8 @@ export class FulfillmentService extends BaseService {
         );
       }
 
-      const fulfillments = this.transformer.toMcpFulfillments(this.ensureArray(response.data));
+      const shipments = response.data?.results ?? [];
+      const fulfillments = this.transformer.fromShipments(shipments);
       return this.success<{ fulfillments: Fulfillment[] }>({ fulfillments });
     } catch (error: unknown) {
       return this.failure<{ fulfillments: Fulfillment[] }>(

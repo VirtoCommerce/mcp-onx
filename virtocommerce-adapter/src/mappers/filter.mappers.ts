@@ -12,7 +12,7 @@ import type {
   GetFulfillmentsInput,
   GetReturnsInput,
 } from '@cof-org/mcp';
-import type { CustomerOrderSearchCriteria, MemberSearchCriteria, ProductSearchCriteria } from '../models/index.js';
+import type { CustomerOrderSearchCriteria, MemberSearchCriteria, ProductSearchCriteria, ShipmentSearchCriteria } from '../models/index.js';
 
 /**
  * Map GetOrdersInput to VirtoCommerce CustomerOrderSearchCriteria
@@ -229,7 +229,37 @@ export function mapCustomerFilters(input: GetCustomersInput): Record<string, unk
 }
 
 /**
- * Map GetFulfillmentsInput to API query parameters
+ * Map GetFulfillmentsInput to VirtoCommerce ShipmentSearchCriteria
+ */
+export function mapFulfillmentFiltersToSearchCriteria(input: GetFulfillmentsInput): ShipmentSearchCriteria {
+  const criteria: ShipmentSearchCriteria = {
+    responseGroup: 'Full',
+  };
+
+  if (input.ids?.length) {
+    criteria.objectIds = input.ids;
+  }
+
+  if (input.orderIds?.length) {
+    criteria.orderIds = input.orderIds;
+  }
+
+  if (input.createdAtMin) {
+    criteria.startDate = input.createdAtMin;
+  }
+  if (input.createdAtMax) {
+    criteria.endDate = input.createdAtMax;
+  }
+
+  criteria.skip = input.skip ?? 0;
+  criteria.take = input.pageSize ?? 20;
+
+  return criteria;
+}
+
+/**
+ * @deprecated Use mapFulfillmentFiltersToSearchCriteria instead
+ * Map GetFulfillmentsInput to generic API query parameters (legacy)
  */
 export function mapFulfillmentFilters(input: GetFulfillmentsInput): Record<string, unknown> {
   return {

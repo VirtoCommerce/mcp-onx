@@ -3,9 +3,20 @@
  */
 
 import type { Fulfillment, FulfillOrderInput } from '@cof-org/mcp';
-import type { YourFulfillmentShipment } from '../types.js';
+import type { Shipment } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';
+
+const SHIPMENT_STATUS_MAP: Record<string, string> = {
+  New: 'pending',
+  PickPack: 'processing',
+  ReadyToShip: 'ready_to_ship',
+  Shipped: 'shipped',
+  Delivered: 'delivered',
+  Cancelled: 'cancelled',
+  OnHold: 'on_hold',
+  PartiallyShipped: 'partially_shipped',
+};
 
 export class FulfillmentTransformer extends BaseTransformer {
   private addressTransformer: AddressTransformer;
@@ -21,57 +32,85 @@ export class FulfillmentTransformer extends BaseTransformer {
   }
 
   /**
-   * Transform YourFulfillment shipment to MCP Fulfillment format
+   * Transform VirtoCommerce Shipment to MCP Fulfillment format
    */
-  toMcpFulfillment(shipment: YourFulfillmentShipment): Fulfillment {
+  fromShipment(shipment: Shipment): Fulfillment {
+    const trackingNumbers = shipment.trackingNumber ? [shipment.trackingNumber] : [];
+
+    const lineItems = (shipment.items ?? []).map((item, index) => ({
+      id: item.id ?? item.lineItemId ?? `${shipment.id}-item-${index}`,
+      sku: item.lineItem?.sku ?? '',
+      quantity: item.quantity ?? 0,
+      name: item.lineItem?.name,
+    }));
+
     return {
-      id: shipment.id,
-      externalId: shipment.tracking_number,
-      orderId: shipment.order_id,
-      trackingNumbers: shipment.tracking_number ? [shipment.tracking_number] : [],
-      shippingCarrier: shipment.carrier,
-      shippingClass: shipment.service,
-      status: shipment.status,
-      shippingAddress: this.addressTransformer.toMcpAddress(shipment.to_address as any),
-      lineItems: shipment.items.map((item, index) => ({
-        id: `${shipment.id}-${item.sku}-${index}`,
-        sku: item.sku,
-        quantity: item.quantity,
-      })),
-      createdAt: shipment.shipped_at ?? this.now(),
-      updatedAt: shipment.delivered_at ?? shipment.shipped_at ?? this.now(),
+      id: shipment.id ?? '',
+      externalId: shipment.outerId,
+      orderId: shipment.customerOrderId ?? shipment.customerOrder?.id ?? '',
+      status: this.mapShipmentStatus(shipment.status),
+      trackingNumbers,
+      lineItems,
+      locationId: shipment.fulfillmentCenterId,
+      shippingAddress: this.addressTransformer.toMcpAddress(shipment.deliveryAddress),
+      shippingCarrier: shipment.shippingMethod?.name ?? shipment.shipmentMethodCode,
+      shippingClass: shipment.shipmentMethodOption,
+      shippingCode: shipment.shipmentMethodCode,
+      shippingPrice: shipment.price,
+      shippingNote: shipment.trackingUrl ?? shipment.comment,
+      expectedDeliveryDate: shipment.deliveryDate,
+      createdAt: shipment.createdDate ?? this.now(),
+      updatedAt: shipment.modifiedDate ?? this.now(),
       tenantId: this.tenantId,
-      expectedDeliveryDate: shipment.delivered_at,
-      expectedShipDate: shipment.shipped_at,
-      shippingNote: shipment.tracking_url,
     };
   }
 
   /**
-   * Transform multiple shipments
+   * Transform multiple VirtoCommerce shipments
    */
-  toMcpFulfillments(shipments: YourFulfillmentShipment[]): Fulfillment[] {
-    return shipments.map((shipment) => this.toMcpFulfillment(shipment));
+  fromShipments(shipments: Shipment[]): Fulfillment[] {
+    return shipments.map((shipment) => this.fromShipment(shipment));
   }
 
   /**
-   * Transform FulfillOrderInput to API payload
+   * Transform FulfillOrderInput to VirtoCommerce Shipment payload
    */
   fromFulfillOrderInput(input: FulfillOrderInput): Record<string, unknown> {
     return {
-      tracking_number: input.trackingNumbers?.[0] ?? undefined,
-      carrier: input.shippingCarrier,
-      service: input.shippingClass,
-      location_id: input.locationId,
-      shipped_at: input.shipByDate ?? this.now(),
-      expected_delivery: input.expectedDeliveryDate,
+      trackingNumber: input.trackingNumbers?.[0],
+      shipmentMethodCode: input.shippingCarrier,
+      shipmentMethodOption: input.shippingClass,
+      fulfillmentCenterId: input.locationId,
+      deliveryDate: input.expectedDeliveryDate,
+      deliveryAddress: input.shippingAddress
+        ? {
+            line1: input.shippingAddress.address1,
+            line2: input.shippingAddress.address2,
+            city: input.shippingAddress.city,
+            regionName: input.shippingAddress.stateOrProvince,
+            postalCode: input.shippingAddress.zipCodeOrPostalCode,
+            countryName: input.shippingAddress.country,
+            phone: input.shippingAddress.phone,
+            email: input.shippingAddress.email,
+            name: [input.shippingAddress.firstName, input.shippingAddress.lastName]
+              .filter(Boolean)
+              .join(' '),
+            organization: input.shippingAddress.company,
+          }
+        : undefined,
       items: input.lineItems?.map((item) => ({
         sku: item.sku,
         quantity: item.quantity ?? 0,
       })),
-      shipping_address: this.addressTransformer.toFulfillmentAddress(input.shippingAddress),
-      incoterms: input.incoterms,
-      notes: input.giftNote,
+      comment: input.giftNote ?? input.shippingNote,
     };
+  }
+
+  /**
+   * Map VirtoCommerce shipment status to normalized status
+   */
+  private mapShipmentStatus(status?: string): string {
+    if (!status) return 'pending';
+    return SHIPMENT_STATUS_MAP[status] ?? status;
   }
 }
