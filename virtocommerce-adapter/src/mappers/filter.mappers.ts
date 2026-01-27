@@ -12,7 +12,7 @@ import type {
   GetFulfillmentsInput,
   GetReturnsInput,
 } from '@cof-org/mcp';
-import type { CustomerOrderSearchCriteria } from '../models/index.js';
+import type { CustomerOrderSearchCriteria, MemberSearchCriteria } from '../models/index.js';
 
 /**
  * Map GetOrdersInput to VirtoCommerce CustomerOrderSearchCriteria
@@ -124,7 +124,32 @@ export function mapProductVariantFilters(input: GetProductVariantsInput): Record
 }
 
 /**
- * Map GetCustomersInput to API query parameters
+ * Map GetCustomersInput to VirtoCommerce MemberSearchCriteria
+ */
+export function mapCustomerFiltersToSearchCriteria(input: GetCustomersInput): MemberSearchCriteria {
+  const criteria: MemberSearchCriteria = {
+    memberTypes: ['Contact'],
+    responseGroup: 'Full',
+  };
+
+  if (input.ids?.length) {
+    criteria.objectIds = input.ids;
+  }
+
+  // Use emails as keyword search (VirtoCommerce member search supports keyword matching)
+  if (input.emails?.length) {
+    criteria.keyword = input.emails.join(' ');
+  }
+
+  criteria.skip = input.skip ?? 0;
+  criteria.take = input.pageSize ?? 20;
+
+  return criteria;
+}
+
+/**
+ * @deprecated Use mapCustomerFiltersToSearchCriteria instead
+ * Map GetCustomersInput to generic API query parameters (legacy)
  */
 export function mapCustomerFilters(input: GetCustomersInput): Record<string, unknown> {
   return {

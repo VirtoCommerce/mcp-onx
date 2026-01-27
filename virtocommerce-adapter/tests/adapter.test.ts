@@ -15,6 +15,7 @@ import type {
   UpdateOrderInput,
   GetOrdersInput,
   GetInventoryInput,
+  GetCustomersInput,
 } from '@cof-org/mcp';
 
 function readResponse(path: string) {
@@ -446,6 +447,139 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         expect(result.success).toBe(true);
         if (result.success) {
           expect(result.orders).toHaveLength(0);
+        }
+      });
+    });
+
+    describe('getCustomers', () => {
+      it('should get customers by IDs', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'CUST-001',
+                memberType: 'Contact',
+                firstName: 'John',
+                lastName: 'Doe',
+                emails: ['john@example.com'],
+                phones: ['+1234567890'],
+                addresses: [],
+                groups: ['VIP'],
+                status: 'active',
+                outerId: 'EXT-CUST-001',
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-15T00:00:00Z',
+                dynamicProperties: [],
+              },
+            ],
+          },
+        });
+
+        const input: GetCustomersInput = {
+          ids: ['CUST-001'],
+        };
+
+        const result = await adapter.getCustomers(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.customers).toHaveLength(1);
+          expect(result.customers[0]?.id).toBe('CUST-001');
+          expect(result.customers[0]?.firstName).toBe('John');
+          expect(result.customers[0]?.lastName).toBe('Doe');
+          expect(result.customers[0]?.email).toBe('john@example.com');
+          expect(result.customers[0]?.phone).toBe('+1234567890');
+          expect(result.customers[0]?.externalId).toBe('EXT-CUST-001');
+          expect(result.customers[0]?.tags).toEqual(['VIP']);
+        }
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/members/search',
+          expect.objectContaining({
+            objectIds: ['CUST-001'],
+            memberTypes: ['Contact'],
+            responseGroup: 'Full',
+          })
+        );
+      });
+
+      it('should get customers by email', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'CUST-002',
+                memberType: 'Contact',
+                firstName: 'Jane',
+                lastName: 'Smith',
+                emails: ['jane@example.com'],
+                phones: [],
+                addresses: [],
+                groups: [],
+                status: 'active',
+                createdDate: '2024-02-01T00:00:00Z',
+                modifiedDate: '2024-02-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: GetCustomersInput = {
+          emails: ['jane@example.com'],
+        };
+
+        const result = await adapter.getCustomers(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.customers).toHaveLength(1);
+          expect(result.customers[0]?.firstName).toBe('Jane');
+          expect(result.customers[0]?.email).toBe('jane@example.com');
+        }
+      });
+
+      it('should handle empty customer results', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 0,
+            results: [],
+          },
+        });
+
+        const input: GetCustomersInput = {
+          ids: ['NON-EXISTENT'],
+        };
+
+        const result = await adapter.getCustomers(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.customers).toHaveLength(0);
+        }
+      });
+
+      it('should handle customer search failure', async () => {
+        postSpy.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'API_ERROR',
+            message: 'Internal server error',
+          },
+        });
+
+        const input: GetCustomersInput = {
+          ids: ['CUST-001'],
+        };
+
+        const result = await adapter.getCustomers(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error).toBeDefined();
         }
       });
     });

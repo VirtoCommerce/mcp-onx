@@ -3,11 +3,10 @@
  */
 
 import type { Customer, FulfillmentToolResult, GetCustomersInput } from '@cof-org/mcp';
-import type { YourFulfillmentCustomer } from '../types.js';
 import type { Contact, MemberSearchCriteria } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { CustomerTransformer } from '../transformers/customer.transformer.js';
-import { mapCustomerFilters } from '../mappers/filter.mappers.js';
+import { mapCustomerFiltersToSearchCriteria } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
 import { ApiClient } from '../utils/api-client.js';
 
@@ -95,9 +94,11 @@ export class CustomerService extends BaseService {
 
   async getCustomers(input: GetCustomersInput): Promise<FulfillmentToolResult<{ customers: Customer[] }>> {
     try {
-      const response = await this.client.get<YourFulfillmentCustomer[] | YourFulfillmentCustomer>(
-        '/customers',
-        mapCustomerFilters(input)
+      const searchCriteria = mapCustomerFiltersToSearchCriteria(input);
+
+      const response = await this.client.post<{ results?: Contact[]; totalCount?: number }>(
+        '/api/members/search',
+        searchCriteria
       );
 
       if (!response.success) {
@@ -107,7 +108,18 @@ export class CustomerService extends BaseService {
         );
       }
 
-      const customers = this.transformer.toMcpCustomers(this.ensureArray(response.data));
+      const contacts = response.data?.results ?? [];
+
+      // If searching by emails, filter results to match requested emails
+      const filteredContacts = input.emails?.length
+        ? contacts.filter((contact) =>
+            contact.emails?.some((email) =>
+              input.emails!.some((e) => e.toLowerCase() === email.toLowerCase())
+            )
+          )
+        : contacts;
+
+      const customers = this.transformer.fromContacts(filteredContacts);
       return this.success<{ customers: Customer[] }>({ customers });
     } catch (error: unknown) {
       return this.failure<{ customers: Customer[] }>(
