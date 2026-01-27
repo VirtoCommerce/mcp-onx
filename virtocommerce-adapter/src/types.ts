@@ -137,9 +137,18 @@ export interface YourFulfillmentShipment {
 }
 
 // Status mapping configuration
+// VirtoCommerce uses PascalCase for statuses
 export const STATUS_MAP: Record<string, string> = {
   New: 'pending',
   Processing: 'processing',
+  Shipped: 'shipped',
+  Delivered: 'delivered',
+  Cancelled: 'cancelled',
+  OnHold: 'on_hold',
+  Refunded: 'refunded',
+  PartiallyShipped: 'partially_shipped',
+  PartiallyDelivered: 'partially_delivered',
+  // Legacy lowercase mappings for backwards compatibility
   shipped: 'shipped',
   delivered: 'delivered',
   cancelled: 'cancelled',

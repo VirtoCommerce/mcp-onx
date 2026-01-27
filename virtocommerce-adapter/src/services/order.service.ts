@@ -66,27 +66,53 @@ export class OrderService extends BaseService {
     }
 
     try {
-      const response = await this.client.post<YourFulfillmentOrder>(`/orders/${input.orderId}/cancel`, {
-        reason: input.reason ?? 'Customer requested cancellation',
-        notify_customer: input.notifyCustomer ?? false,
-        notes: input.notes,
-        cancelled_at: new Date().toISOString(),
-      });
+      // Fetch the current order
+      const fetchResponse = await this.client.get<CustomerOrder>(
+        `/api/order/customerOrders/${input.orderId}`
+      );
 
-      if (!response.success) {
-        return this.failure<{ order: Order }>('Failed to cancel order', response.error ?? response);
-      }
-
-      const orderData = response.data ?? (await this.fetchOrderById(input.orderId)).data;
-
-      if (!orderData) {
-        return this.failure<{ order: Order }>('Order not found after cancellation', {
+      if (!fetchResponse.success || !fetchResponse.data) {
+        return this.failure<{ order: Order }>('Order not found', {
           orderId: input.orderId,
+          error: fetchResponse.error,
         });
       }
 
+      const order = fetchResponse.data;
+
+      // Check if already cancelled
+      if (order.isCancelled) {
+        return this.failure<{ order: Order }>('Order is already cancelled', {
+          orderId: input.orderId,
+          cancelledDate: order.cancelledDate,
+        });
+      }
+
+      // Update the order with cancellation fields
+      const cancelledOrder: CustomerOrder = {
+        ...order,
+        isCancelled: true,
+        cancelledDate: new Date().toISOString(),
+        cancelReason: input.reason ?? 'Customer requested cancellation',
+        cancelledState: 'Completed',
+        status: 'Cancelled',
+        comment: input.notes ? `${order.comment ?? ''}\n[Cancellation] ${input.notes}`.trim() : order.comment,
+      };
+
+      // Save the updated order
+      const saveResponse = await this.client.put<CustomerOrder>(
+        '/api/order/customerOrders',
+        cancelledOrder
+      );
+
+      if (!saveResponse.success) {
+        return this.failure<{ order: Order }>('Failed to cancel order', saveResponse.error ?? saveResponse);
+      }
+
+      const savedOrder = saveResponse.data ?? cancelledOrder;
+
       return this.success<{ order: Order }>({
-        order: this.transformer.toMcpOrder(orderData as unknown as CustomerOrder),
+        order: this.transformer.toMcpOrder(savedOrder),
       });
     } catch (error: unknown) {
       return this.failure<{ order: Order }>(
@@ -153,7 +179,7 @@ export class OrderService extends BaseService {
     }
   }
 
-  private async fetchOrderById(orderId: string): Promise<YourFulfillmentApiResponse<YourFulfillmentOrder>> {
-    return this.client.get<YourFulfillmentOrder>(`/orders/${orderId}`);
+  private async fetchOrderById(orderId: string): Promise<YourFulfillmentApiResponse<CustomerOrder>> {
+    return this.client.get<CustomerOrder>(`/api/order/customerOrders/${orderId}`);
   }
 }

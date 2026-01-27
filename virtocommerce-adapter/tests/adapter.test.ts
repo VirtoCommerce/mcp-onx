@@ -26,6 +26,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
   let mockApiClient: ApiClient;
   let getSpy: jest.MockedFunction<any>;
   let postSpy: jest.MockedFunction<any>;
+  let putSpy: jest.MockedFunction<any>;
   let patchSpy: jest.MockedFunction<any>;
 
   beforeEach(() => {
@@ -42,6 +43,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
     mockApiClient = (adapter as any).client;
     getSpy = jest.spyOn(mockApiClient, 'get') as unknown as jest.MockedFunction<any>;
     postSpy = jest.spyOn(mockApiClient, 'post') as unknown as jest.MockedFunction<any>;
+    putSpy = jest.spyOn(mockApiClient, 'put') as unknown as jest.MockedFunction<any>;
     patchSpy = jest.spyOn(mockApiClient, 'patch') as unknown as jest.MockedFunction<any>;
   });
 
@@ -214,26 +216,44 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
     describe('cancelOrder', () => {
       it('should cancel order successfully', async () => {
-        postSpy.mockResolvedValue({
+        // Mock GET to fetch the existing order
+        getSpy.mockResolvedValue({
           success: true,
           data: {
             id: 'ORDER-001',
             number: 'ORD-2024-001',
-            external_id: 'EXT-001',
-            status: 'cancelled',
-            customer: {
-              id: 'CUST-001',
-              email: 'test@example.com',
-              first_name: 'John',
-              last_name: 'Doe',
-            },
+            outerId: 'EXT-001',
+            status: 'New',
+            isCancelled: false,
+            customerId: 'CUST-001',
+            customerName: 'John Doe',
             items: [],
             total: 100.0,
             currency: 'USD',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-            shipping_address: {},
-            billing_address: {},
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        // Mock PUT to save the cancelled order
+        putSpy.mockResolvedValue({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            number: 'ORD-2024-001',
+            outerId: 'EXT-001',
+            status: 'Cancelled',
+            isCancelled: true,
+            cancelledState: 'Completed',
+            cancelReason: 'Customer request',
+            cancelledDate: '2024-01-01T12:00:00Z',
+            customerId: 'CUST-001',
+            customerName: 'John Doe',
+            items: [],
+            total: 100.0,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T12:00:00Z',
           },
         });
 
@@ -250,10 +270,20 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.order.id).toBe('ORDER-001');
           expect(result.order.status).toBe('cancelled');
         }
+        expect(getSpy).toHaveBeenCalledWith('/api/order/customerOrders/ORDER-001');
+        expect(putSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders',
+          expect.objectContaining({
+            isCancelled: true,
+            cancelReason: 'Customer request',
+            cancelledState: 'Completed',
+            status: 'Cancelled',
+          })
+        );
       });
 
-      it('should handle cancellation failure', async () => {
-        postSpy.mockResolvedValue({
+      it('should handle cancellation failure when order not found', async () => {
+        getSpy.mockResolvedValue({
           success: false,
           error: {
             code: 'ORDER_NOT_FOUND',
@@ -270,6 +300,31 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         expect(result.success).toBe(false);
         if (!result.success) {
           expect(result.error).toBeDefined();
+        }
+      });
+
+      it('should fail when order is already cancelled', async () => {
+        getSpy.mockResolvedValue({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            number: 'ORD-2024-001',
+            status: 'Cancelled',
+            isCancelled: true,
+            cancelledDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        const input: CancelOrderInput = {
+          orderId: 'ORDER-001',
+          reason: 'Customer request',
+        };
+
+        const result = await adapter.cancelOrder(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('already cancelled');
         }
       });
     });
