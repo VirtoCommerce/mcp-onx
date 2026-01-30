@@ -110,7 +110,9 @@ export class FulfillmentTransformer extends BaseTransformer {
    * Map VirtoCommerce shipment status to normalized status
    */
   private mapShipmentStatus(status?: string): string {
-    if (!status) return 'pending';
+    if (!status) {
+      return 'pending';
+    }
     return SHIPMENT_STATUS_MAP[status] ?? status;
   }
 }

@@ -31,7 +31,6 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
   let getSpy: jest.MockedFunction<any>;
   let postSpy: jest.MockedFunction<any>;
   let putSpy: jest.MockedFunction<any>;
-  let patchSpy: jest.MockedFunction<any>;
 
   beforeEach(() => {
     // Create adapter instance
@@ -48,7 +47,6 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
     getSpy = jest.spyOn(mockApiClient, 'get') as unknown as jest.MockedFunction<any>;
     postSpy = jest.spyOn(mockApiClient, 'post') as unknown as jest.MockedFunction<any>;
     putSpy = jest.spyOn(mockApiClient, 'put') as unknown as jest.MockedFunction<any>;
-    patchSpy = jest.spyOn(mockApiClient, 'patch') as unknown as jest.MockedFunction<any>;
   });
 
   describe('Lifecycle Methods', () => {
@@ -334,33 +332,90 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
     });
 
     describe('updateOrder', () => {
-      it('should update order successfully', async () => {
-        patchSpy.mockResolvedValue({
+      it('should update order status and shipping address', async () => {
+        // Mock GET to fetch the existing order
+        getSpy.mockResolvedValue({
           success: true,
           data: {
             id: 'ORDER-001',
             number: 'ORD-2024-001',
-            external_id: 'EXT-001',
-            status: 'processing',
-            customer: {
-              id: 'CUST-001',
-              email: 'test@example.com',
-              first_name: 'Jane',
-              last_name: 'Smith',
-            },
-            items: [],
+            outerId: 'EXT-001',
+            status: 'New',
+            customerId: 'CUST-001',
+            customerName: 'John Doe',
+            items: [
+              { id: 'LI-001', sku: 'PROD-001', name: 'Test Product', quantity: 2, price: 29.99 },
+            ],
+            shipments: [
+              {
+                id: 'SHIP-001',
+                deliveryAddress: {
+                  line1: '123 Main St',
+                  city: 'New York',
+                  regionName: 'NY',
+                  postalCode: '10001',
+                  countryName: 'US',
+                  name: 'John Doe',
+                },
+              },
+            ],
+            addresses: [
+              {
+                addressType: 'Shipping',
+                line1: '123 Main St',
+                city: 'New York',
+                regionName: 'NY',
+                postalCode: '10001',
+                countryName: 'US',
+              },
+            ],
             total: 100.0,
             currency: 'USD',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-02T00:00:00Z',
-            shipping_address: {
-              street1: '456 Oak Ave',
-              city: 'Los Angeles',
-              state: 'CA',
-              postal_code: '90001',
-              country: 'US',
-            },
-            billing_address: {},
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        // Mock PUT to save the updated order
+        putSpy.mockResolvedValue({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            number: 'ORD-2024-001',
+            outerId: 'EXT-001',
+            status: 'Processing',
+            customerId: 'CUST-001',
+            customerName: 'John Doe',
+            items: [
+              { id: 'LI-001', sku: 'PROD-001', name: 'Test Product', quantity: 2, price: 29.99 },
+            ],
+            shipments: [
+              {
+                id: 'SHIP-001',
+                deliveryAddress: {
+                  line1: '456 Oak Ave',
+                  city: 'Los Angeles',
+                  regionName: 'CA',
+                  postalCode: '90001',
+                  countryName: 'US',
+                  name: 'Jane Smith',
+                },
+              },
+            ],
+            addresses: [
+              {
+                addressType: 'Shipping',
+                line1: '456 Oak Ave',
+                city: 'Los Angeles',
+                regionName: 'CA',
+                postalCode: '90001',
+                countryName: 'US',
+              },
+            ],
+            total: 100.0,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-02T00:00:00Z',
           },
         });
 
@@ -386,6 +441,126 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         if (result.success) {
           expect(result.order.id).toBe('ORDER-001');
           expect(result.order.status).toBe('processing');
+          expect(result.order.shippingAddress?.address1).toBe('456 Oak Ave');
+          expect(result.order.shippingAddress?.city).toBe('Los Angeles');
+        }
+
+        expect(getSpy).toHaveBeenCalledWith('/api/order/customerOrders/ORDER-001');
+        expect(putSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders',
+          expect.objectContaining({
+            id: 'ORDER-001',
+            status: 'Processing',
+          })
+        );
+      });
+
+      it('should update order note', async () => {
+        getSpy.mockResolvedValue({
+          success: true,
+          data: {
+            id: 'ORDER-002',
+            number: 'ORD-2024-002',
+            status: 'New',
+            comment: 'Original note',
+            items: [],
+            total: 50.0,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        putSpy.mockResolvedValue({
+          success: true,
+          data: {
+            id: 'ORDER-002',
+            number: 'ORD-2024-002',
+            status: 'New',
+            comment: 'Updated shipping instructions',
+            items: [],
+            total: 50.0,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-02T00:00:00Z',
+          },
+        });
+
+        const input: UpdateOrderInput = {
+          id: 'ORDER-002',
+          updates: {
+            orderNote: 'Updated shipping instructions',
+          },
+        };
+
+        const result = await adapter.updateOrder(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.order.orderNote).toBe('Updated shipping instructions');
+        }
+
+        expect(putSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders',
+          expect.objectContaining({
+            comment: 'Updated shipping instructions',
+          })
+        );
+      });
+
+      it('should handle update failure when order not found', async () => {
+        getSpy.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'ORDER_NOT_FOUND',
+            message: 'Order not found',
+          },
+        });
+
+        const input: UpdateOrderInput = {
+          id: 'INVALID-ID',
+          updates: { status: 'processing' },
+        };
+
+        const result = await adapter.updateOrder(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('Order not found');
+        }
+      });
+
+      it('should handle save failure', async () => {
+        getSpy.mockResolvedValue({
+          success: true,
+          data: {
+            id: 'ORDER-003',
+            number: 'ORD-2024-003',
+            status: 'New',
+            items: [],
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        putSpy.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid status transition',
+          },
+        });
+
+        const input: UpdateOrderInput = {
+          id: 'ORDER-003',
+          updates: { status: 'shipped' },
+        };
+
+        const result = await adapter.updateOrder(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('Failed to update order');
         }
       });
     });

@@ -11,7 +11,7 @@ import type {
   UpdateOrderInput,
   GetOrdersInput,
 } from '@cof-org/mcp';
-import type { YourFulfillmentOrder, YourFulfillmentApiResponse } from '../types.js';
+import type { YourFulfillmentOrder } from '../types.js';
 import type {
   CustomerOrder,
   CustomerOrderSearchResult,
@@ -123,24 +123,43 @@ export class OrderService extends BaseService {
   }
 
   async updateOrder(input: UpdateOrderInput): Promise<OrderResult> {
+    if (!input.id) {
+      return this.failure<{ order: Order }>('id is required to update an order');
+    }
+
     try {
-      const response = await this.client.patch<YourFulfillmentOrder>(
-        `/orders/${input.id}`,
-        this.transformer.fromUpdateOrderInput(input.updates)
+      // Step 1: Fetch the current order
+      const fetchResponse = await this.client.get<CustomerOrder>(
+        `/api/order/customerOrders/${input.id}`
       );
 
-      if (!response.success) {
-        return this.failure<{ order: Order }>('Failed to update order', response.error ?? response);
+      if (!fetchResponse.success || !fetchResponse.data) {
+        return this.failure<{ order: Order }>('Order not found', {
+          orderId: input.id,
+          error: fetchResponse.error,
+        });
       }
 
-      const orderData = response.data ?? (await this.fetchOrderById(input.id)).data;
+      // Step 2: Apply updates to the VirtoCommerce order object
+      const updatedOrder = this.transformer.applyUpdatesToOrder(
+        fetchResponse.data,
+        input.updates
+      );
 
-      if (!orderData) {
-        return this.failure<{ order: Order }>('Order not found after update', { orderId: input.id });
+      // Step 3: Save the updated order
+      const saveResponse = await this.client.put<CustomerOrder>(
+        '/api/order/customerOrders',
+        updatedOrder
+      );
+
+      if (!saveResponse.success) {
+        return this.failure<{ order: Order }>('Failed to update order', saveResponse.error ?? saveResponse);
       }
+
+      const savedOrder = saveResponse.data ?? updatedOrder;
 
       return this.success<{ order: Order }>({
-        order: this.transformer.toMcpOrder(orderData as unknown as CustomerOrder),
+        order: this.transformer.toMcpOrder(savedOrder),
       });
     } catch (error: unknown) {
       return this.failure<{ order: Order }>(`Order update failed: ${getErrorMessage(error)}`, error);
@@ -177,9 +196,5 @@ export class OrderService extends BaseService {
     } catch (error: unknown) {
       return this.failure<{ orders: Order[] }>(`Order lookup failed: ${getErrorMessage(error)}`, error);
     }
-  }
-
-  private async fetchOrderById(orderId: string): Promise<YourFulfillmentApiResponse<CustomerOrder>> {
-    return this.client.get<CustomerOrder>(`/api/order/customerOrders/${orderId}`);
   }
 }

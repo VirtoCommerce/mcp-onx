@@ -129,41 +129,66 @@ export class OrderTransformer extends BaseTransformer {
   }
 
   /**
-   * Transform UpdateOrderInput to API payload
+   * Apply MCP update fields to a VirtoCommerce CustomerOrder object.
+   * Returns the modified order ready for PUT save.
    */
-  fromUpdateOrderInput(updates: UpdateOrderInput['updates']): Record<string, unknown> {
-    const payload: Record<string, unknown> = {};
+  applyUpdatesToOrder(order: CustomerOrder, updates: UpdateOrderInput['updates']): CustomerOrder {
+    const updated = { ...order };
 
     const status = this.valueOrUndefined((updates as { status?: string | null | undefined }).status);
     if (status) {
-      payload.status = this.reverseMapStatus(status);
+      updated.status = this.reverseMapStatus(status);
+    }
+
+    const orderNote = this.valueOrUndefined((updates as { orderNote?: string | null }).orderNote);
+    if (orderNote !== undefined) {
+      updated.comment = orderNote;
     }
 
     const shippingAddress = this.valueOrUndefined(
       (updates as { shippingAddress?: Address | null }).shippingAddress
     );
     if (shippingAddress) {
-      payload.shipping_address = this.addressTransformer.toFulfillmentAddress(shippingAddress);
+      const virtoShipping = this.addressTransformer.toVirtoAddress(shippingAddress, 'Shipping');
+      // Update shipping address on the first shipment
+      if (updated.shipments?.length) {
+        updated.shipments = updated.shipments.map((s, i) =>
+          i === 0 ? { ...s, deliveryAddress: virtoShipping } : s
+        );
+      }
+      // Also update in the order-level addresses array
+      this.upsertAddress(updated, virtoShipping, 'Shipping');
     }
 
     const billingAddress = this.valueOrUndefined(
       (updates as { billingAddress?: Address | null }).billingAddress
     );
     if (billingAddress) {
-      payload.billing_address = this.addressTransformer.toFulfillmentAddress(billingAddress);
+      const virtoBilling = this.addressTransformer.toVirtoAddress(billingAddress, 'Billing');
+      this.upsertAddress(updated, virtoBilling, 'Billing');
     }
 
-    const notes = this.valueOrUndefined((updates as { notes?: string | null }).notes);
-    if (notes) {
-      payload.notes = notes;
-    }
+    return updated;
+  }
 
-    const tags = this.valueOrUndefined((updates as { tags?: string[] | null }).tags);
-    if (Array.isArray(tags)) {
-      payload.tags = tags;
+  /**
+   * Upsert an address in the order's addresses array by type.
+   * Replaces the first address of the given type, or appends if none found.
+   */
+  private upsertAddress(
+    order: CustomerOrder,
+    address: import('../models/index.js').Address,
+    type: 'Billing' | 'Shipping'
+  ): void {
+    if (!order.addresses) {
+      order.addresses = [];
     }
-
-    return payload;
+    const idx = order.addresses.findIndex((a) => a.addressType === type);
+    if (idx >= 0) {
+      order.addresses[idx] = address;
+    } else {
+      order.addresses.push(address);
+    }
   }
 
   /**

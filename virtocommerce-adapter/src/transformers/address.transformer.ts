@@ -31,6 +31,27 @@ export class AddressTransformer extends BaseTransformer {
   }
 
   /**
+   * Transform MCP Address to VirtoCommerce native Address format
+   */
+  toVirtoAddress(address: Address, addressType?: 'Billing' | 'Shipping'): VirtoAddress {
+    return {
+      addressType: addressType,
+      firstName: address.firstName,
+      lastName: address.lastName,
+      name: this.composeName(address.firstName, address.lastName),
+      organization: address.company,
+      line1: address.address1,
+      line2: address.address2,
+      city: address.city,
+      regionName: address.stateOrProvince,
+      postalCode: address.zipCodeOrPostalCode,
+      countryName: address.country,
+      phone: address.phone,
+      email: address.email,
+    };
+  }
+
+  /**
    * Transform VirtoCommerce address to MCP Address format
    */
   toMcpAddress(address?: VirtoAddress): Address | undefined {
