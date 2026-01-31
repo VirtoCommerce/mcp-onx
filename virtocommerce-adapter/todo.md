@@ -1,1 +1,1 @@
-[ ] order statuses mapping
+[x] order statuses mapping

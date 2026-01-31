@@ -11,6 +11,7 @@ export default {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       useESM: true,
       tsconfig: {
+        module: 'ES2022',
         allowSyntheticDefaultImports: true
       }
     }]

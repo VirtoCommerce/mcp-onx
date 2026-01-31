@@ -158,6 +158,19 @@ export const STATUS_MAP: Record<string, string> = {
   partially_delivered: 'partially_delivered',
 };
 
+// Reverse mapping: normalized MCP status → VirtoCommerce PascalCase status
+export const REVERSE_STATUS_MAP: Record<string, string> = {
+  pending: 'New',
+  processing: 'Processing',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  on_hold: 'OnHold',
+  refunded: 'Refunded',
+  partially_shipped: 'PartiallyShipped',
+  partially_delivered: 'PartiallyDelivered',
+};
+
 // Error codes for consistent error handling
 export enum ErrorCode {
   CONNECTION_FAILED = 'CONNECTION_FAILED',

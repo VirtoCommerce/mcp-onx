@@ -10,7 +10,7 @@ import type {
   CreateSalesOrderInput,
   UpdateOrderInput,
 } from '@cof-org/mcp';
-import { STATUS_MAP } from '../types.js';
+import { STATUS_MAP, REVERSE_STATUS_MAP } from '../types.js';
 import type { CustomerOrder, LineItem, DynamicObjectProperty, Contact } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';
@@ -240,14 +240,6 @@ export class OrderTransformer extends BaseTransformer {
    * Reverse map normalized status to VirtoCommerce status
    */
   private reverseMapStatus(status: string): string {
-    const reverse = Object.entries(STATUS_MAP).reduce<Record<string, string>>(
-      (acc, [fulfillmentStatus, normalized]) => {
-        acc[normalized] = fulfillmentStatus;
-        return acc;
-      },
-      {}
-    );
-
-    return reverse[status] ?? status;
+    return REVERSE_STATUS_MAP[status] ?? status;
   }
 }
