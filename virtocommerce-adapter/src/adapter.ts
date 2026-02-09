@@ -111,7 +111,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
       }
 
       this.connected = true;
-      console.info('Successfully connected to VirtoCommerce');
+      console.error('Successfully connected to VirtoCommerce');
     } catch (error: unknown) {
       this.connected = false;
       throw new AdapterError(
@@ -124,7 +124,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
 
   async disconnect(): Promise<void> {
     this.connected = false;
-    console.info('Disconnected from VirtoCommerce');
+    console.error('Disconnected from VirtoCommerce');
   }
 
   async healthCheck(): Promise<HealthStatus> {

@@ -52,7 +52,7 @@ export class ApiClient {
     this.client.interceptors.request.use(
       (request) => {
         if (this.debugMode) {
-          console.log('[API Request]', {
+          console.error('[API Request]', {
             method: request.method?.toUpperCase(),
             url: request.url,
             params: request.params,
@@ -73,7 +73,7 @@ export class ApiClient {
     this.client.interceptors.response.use(
       (response) => {
         if (this.debugMode) {
-          console.log('[API Response]', {
+          console.error('[API Response]', {
             status: response.status,
             statusText: response.statusText,
             url: response.config.url,
@@ -201,7 +201,7 @@ export class ApiClient {
       // Wait before retrying (exponential backoff)
       const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
       if (this.debugMode) {
-        console.log(`[API Retry] Attempt ${attempt + 1}/${this.retryAttempts} after ${delay}ms`);
+        console.error(`[API Retry] Attempt ${attempt + 1}/${this.retryAttempts} after ${delay}ms`);
       }
       await this.sleep(delay);
 

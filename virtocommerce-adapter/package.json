@@ -2,6 +2,14 @@
   "name": "@virtocommerce/vc-fulfillment-mcp-adapter",
   "version": "1.0.0",
   "description": "Commerce Operations Foundation adapter for VirtoCommerce Fulfillment",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VirtoCommerce/mcp-onx"
+  },
+  "bugs": {
+    "url": "https://github.com/VirtoCommerce/mcp-onx/issues"
+  },
+  "homepage": "https://docs.virtocommerce.com/adapter",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,9 +35,10 @@
     "cof",
     "fulfillment",
     "adapter",
-    "mcp"
+    "mcp",
+    "virtocommerce"
   ],
-  "author": "Your Company",
+  "author": "VirtoCommerce <support@virtocommerce.com>",
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.8.0",
