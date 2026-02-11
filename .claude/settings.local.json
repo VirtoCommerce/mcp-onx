@@ -4,7 +4,27 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(npx tsc:*)",
       "Bash(npm run build:*)",
-      "Bash(npm test)"
+      "Bash(npm test)",
+      "Bash(tree:*)",
+      "Bash(npx jest:*)",
+      "Bash(dir /s \"e:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\mcp-reference-server\\\\virtocommerce-adapter\")",
+      "Bash(dir /B /S \"e:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\mcp-reference-server\\\\virtocommerce-adapter\")",
+      "Bash(node --experimental-vm-modules node_modules/jest/bin/jest.js:*)",
+      "Bash(test:*)",
+      "Bash(npm ls:*)",
+      "Bash(docker build:*)",
+      "Bash(docker run:*)",
+      "Bash(powershell -Command \"Write-Output ''{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"method\"\":\"\"tools/list\"\",\"\"id\"\":1}'' | docker run --rm -i -e ADAPTER_CONFIG=''{}'' cof-mcp-virto\")",
+      "Bash(powershell -Command \"Write-Output ''{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"method\"\":\"\"tools/list\"\",\"\"id\"\":1}'' | docker run --rm -i -e ADAPTER_CONFIG=''{\"\"apiUrl\"\":\"\"https://host.docker.internal:5001\"\",\"\"apiKey\"\":\"\"76bf85d9-196e-4d4a-a6d7-6765102361c9\"\"}'' -e LOG_LEVEL=debug cof-mcp-virto\")",
+      "Bash(powershell -Command \"Write-Output ''{\"\"jsonrpc\"\":\"\"2.0\"\",\"\"method\"\":\"\"tools/list\"\",\"\"id\"\":1}'' | docker run --rm -i --env-file ''e:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\mcp-reference-server\\\\.env.docker'' cof-mcp-virto\")",
+      "Bash(npm view:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(node -e:*)",
+      "Bash(docker compose up:*)"
     ]
   }
 }

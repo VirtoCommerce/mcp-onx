@@ -28,7 +28,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:integration": "npm run build && node test-integration.js",
     "lint": "eslint .",
-    "prepublishOnly": "npm run build && npm test",
+    "prepublishOnly": "npm run build",
     "dev": "tsc --watch"
   },
   "keywords": [

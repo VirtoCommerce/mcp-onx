@@ -3,8 +3,10 @@
  * This is the recommended approach for MCP servers
  */
 
+import * as http from 'http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -25,6 +27,8 @@ export class MCPServerSDK {
   private serviceOrchestrator: ServiceOrchestrator;
   private toolRegistry: ToolRegistry;
   private config: ServerConfig;
+  private httpServer?: http.Server;
+  private sseTransports: Map<string, SSEServerTransport> = new Map();
 
   constructor(config: ServerConfig) {
     this.config = config;
@@ -131,6 +135,71 @@ export class MCPServerSDK {
     Logger.info('MCP server running on stdio transport');
   }
 
+  async startSSE(port: number): Promise<void> {
+    Logger.info('Starting MCP server with SSE transport...');
+
+    await this.serviceOrchestrator.initialize(this.config.adapter);
+    await this.registerTools();
+
+    this.httpServer = http.createServer(async (req, res) => {
+      // CORS headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
+      const url = new URL(req.url || '/', `http://localhost:${port}`);
+
+      if (url.pathname === '/sse' && req.method === 'GET') {
+        // New SSE connection
+        const transport = new SSEServerTransport('/messages', res);
+        this.sseTransports.set(transport.sessionId, transport);
+        Logger.info(`SSE client connected: ${transport.sessionId}`);
+
+        transport.onclose = () => {
+          this.sseTransports.delete(transport.sessionId);
+          Logger.info(`SSE client disconnected: ${transport.sessionId}`);
+        };
+
+        await this.server.connect(transport);
+        return;
+      }
+
+      if (url.pathname === '/messages' && req.method === 'POST') {
+        // Route POST to the correct session
+        const sessionId = url.searchParams.get('sessionId');
+        const transport = sessionId ? this.sseTransports.get(sessionId) : undefined;
+
+        if (!transport) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid or missing sessionId' }));
+          return;
+        }
+
+        await transport.handlePostMessage(req, res);
+        return;
+      }
+
+      if (url.pathname === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', transport: 'sse', sessions: this.sseTransports.size }));
+        return;
+      }
+
+      res.writeHead(404);
+      res.end();
+    });
+
+    this.httpServer.listen(port, () => {
+      Logger.info(`MCP server running on SSE transport at http://0.0.0.0:${port}/sse`);
+    });
+  }
+
   private async registerTools(): Promise<void> {
     Logger.debug('Registering Fulfillment tools...');
 
@@ -146,6 +215,17 @@ export class MCPServerSDK {
 
     // Cleanup service orchestrator first
     await this.serviceOrchestrator.cleanup();
+
+    // Close all SSE transports
+    for (const transport of this.sseTransports.values()) {
+      await transport.close();
+    }
+    this.sseTransports.clear();
+
+    // Close HTTP server if running
+    if (this.httpServer) {
+      await new Promise<void>((resolve) => this.httpServer!.close(() => resolve()));
+    }
 
     // Disconnect the MCP server properly
     if (this.server) {

@@ -5,6 +5,9 @@
  * Entry point using MCP SDK components
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 
 import { ConfigManager } from './config/config-manager.js';
@@ -16,6 +19,22 @@ import { TimeoutHandler } from './utils/timeout.js';
 
 async function main() {
   try {
+    // Ensure stdout stays чистым для MCP JSON-RPC.
+    console.log = console.error;
+    console.info = console.error;
+    console.warn = console.error;
+    console.debug = console.error;
+
+    // Load .env files before config initialization (local overrides default).
+    const envPath = path.join(process.cwd(), '.env');
+    const envLocalPath = path.join(process.cwd(), '.env.local');
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath });
+    }
+    if (fs.existsSync(envLocalPath)) {
+      dotenv.config({ path: envLocalPath, override: true });
+    }
+
     // Initialize logger with safe defaults before config loading
     Logger.init('info');
 
@@ -38,7 +57,14 @@ async function main() {
 
     // Create and start server
     const server = new MCPServerSDK(config);
-    await server.start();
+
+    const transport = process.env.MCP_TRANSPORT || 'stdio';
+    if (transport === 'sse') {
+      const port = parseInt(process.env.MCP_PORT || '3000', 10);
+      await server.startSSE(port);
+    } else {
+      await server.start();
+    }
 
     // Handle graceful shutdown
     const shutdown = async () => {

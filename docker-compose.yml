@@ -1,0 +1,15 @@
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_PORT=3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
