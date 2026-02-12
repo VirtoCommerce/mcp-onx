@@ -1,0 +1,150 @@
+# v1.0.1
+name: MCP Server CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_COLOR: true
+      CLOUD_INSTANCE_BASE_URL: ${{secrets.CLOUD_INSTANCE_BASE_URL}}
+      CLIENT_ID: ${{secrets.CLIENT_ID}}
+      CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+      GITHUB_TOKEN: ${{ secrets.REPO_TOKEN }}
+      BLOB_SAS: ${{ secrets.BLOB_TOKEN }}
+      VERSION: ''
+      BUILD_STATE: 'failed'
+      RELEASE_STATUS: 'false'
+      DOCKER_REPOSITORY: 'ghcr.io'
+      DOCKER_IMAGE: 'vc-fulfillment-mcp-server'
+      DOCKER_TAG: ''
+    outputs:
+      jira-keys: ${{ steps.jira_keys.outputs.jira-keys }}
+      version: ${{ env.VERSION }}
+      tag: ${{ env.DOCKER_TAG }}
+
+    steps:
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set RELEASE_STATUS
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: echo "RELEASE_STATUS=true" >> $GITHUB_ENV
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from package.json
+        id: version
+        run: |
+          BASE_VERSION=$(jq -r .version server/package.json)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "base=$BASE_VERSION" >> $GITHUB_OUTPUT
+          echo "sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Set VERSION
+        run: |
+          if [ '${{ github.ref }}' = 'refs/heads/master' ]; then
+            echo "VERSION=${{ steps.version.outputs.base }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ steps.version.outputs.base }}-alpha.${{ github.run_number }}" >> $GITHUB_ENV
+          fi
+
+      - name: Update package.json Version
+        run: |
+          npm version ${{ env.VERSION }} --no-git-tag-version --prefix server
+          npm version ${{ env.VERSION }} --no-git-tag-version --prefix virtocommerce-adapter
+
+      - name: Set DOCKER_TAG
+        run: echo "DOCKER_TAG=${{ env.VERSION }}" >> $GITHUB_ENV
+
+      - name: Install and build server
+        run: cd server && npm ci && npm run build
+
+      - name: Install and build adapter
+        run: cd virtocommerce-adapter && npm ci && npm run build
+
+      - name: BUILD_STATE::successful
+        if: success()
+        run: echo "BUILD_STATE=successful" >> $GITHUB_ENV
+
+      - name: Add files to zip
+        run: |
+          mkdir ./artifacts
+          zip -r ./artifacts/vc-fulfillment-mcp-server-${{ env.VERSION }}.zip \
+            server/dist/ server/package.json \
+            virtocommerce-adapter/dist/ virtocommerce-adapter/package.json \
+            Dockerfile docker-compose.yml
+
+      - name: Publish to Blob
+        id: blobRelease
+        uses: VirtoCommerce/vc-github-actions/publish-blob-release@master
+        with:
+          blobSAS: ${{ secrets.BLOB_TOKEN }}
+          blobUrl: ${{ vars.BLOB_URL }}
+
+      - name: Set URLs
+        id: urls
+        run: |
+          echo "DOCKER_URL=${{ env.DOCKER_REPOSITORY }}/${GITHUB_REPOSITORY_OWNER,,}/${{ env.DOCKER_IMAGE }}:" >> $GITHUB_OUTPUT
+          echo "BLOB_URL=${{ steps.blobRelease.outputs.packageUrl }}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REPOSITORY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          context: .
+          file: ./Dockerfile
+          tags: |
+            ${{ steps.urls.outputs.DOCKER_URL }}${{ env.DOCKER_TAG }}
+            ${{ steps.urls.outputs.DOCKER_URL }}${{ github.ref == 'refs/heads/master' && 'latest' || 'dev-latest' }}
+
+      - name: Parse Jira Keys from All Commits
+        uses: VirtoCommerce/vc-github-actions/get-jira-keys@master
+        if: always()
+        id: jira_keys
+        with:
+          release: ${{ env.RELEASE_STATUS }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Build Info to Jira
+        if: ${{ env.CLOUD_INSTANCE_BASE_URL != 0 && env.CLIENT_ID != 0 && env.CLIENT_SECRET != 0 && steps.jira_keys.outputs.jira-keys != '' && always() }}
+        id: push_build_info_to_jira
+        uses: VirtoCommerce/jira-upload-build-info@master
+        with:
+          cloud-instance-base-url: '${{ secrets.CLOUD_INSTANCE_BASE_URL }}'
+          client-id: '${{ secrets.CLIENT_ID }}'
+          client-secret: '${{ secrets.CLIENT_SECRET }}'
+          pipeline-id: '${{ github.repository }} ${{ github.workflow }}'
+          build-number: ${{ github.run_number }}
+          build-display-name: 'Workflow: ${{ github.workflow }} (#${{ github.run_number }})'
+          build-state: '${{ env.BUILD_STATE }}'
+          build-url: '${{github.event.repository.url}}/actions/runs/${{github.run_id}}'
+          update-sequence-number: '${{ github.run_id }}'
+          last-updated: '${{github.event.head_commit.timestamp}}'
+          issue-keys: '${{ steps.jira_keys.outputs.jira-keys }}'
+          commit-id: '${{ github.sha }}'
+          repo-url: '${{ github.event.repository.url }}'
+          build-ref-url: '${{ github.event.repository.url }}/actions/runs/${{ github.run_id }}'
+
+      - name: Confirm Jira Build Output
+        if: success()
+        run: |
+          echo "Jira Upload Build Info response: ${{ steps.push_build_info_to_jira.outputs.response }}"
