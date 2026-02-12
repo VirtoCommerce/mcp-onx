@@ -18,7 +18,7 @@ jobs:
       BUILD_STATE: 'failed'
       RELEASE_STATUS: 'false'
       DOCKER_REPOSITORY: 'ghcr.io'
-      DOCKER_IMAGE: 'vc-fulfillment-mcp-server'
+      DOCKER_IMAGE: 'vc-mcp-onx'
       DOCKER_TAG: ''
     outputs:
       jira-keys: ${{ steps.jira_keys.outputs.jira-keys }}
@@ -77,7 +77,7 @@ jobs:
       - name: Add files to zip
         run: |
           mkdir ./artifacts
-          zip -r ./artifacts/vc-fulfillment-mcp-server-${{ env.VERSION }}.zip \
+          zip -r ./artifacts/vc-mcp-onx-${{ env.VERSION }}.zip \
             server/dist/ server/package.json \
             virtocommerce-adapter/dist/ virtocommerce-adapter/package.json \
             Dockerfile docker-compose.yml
