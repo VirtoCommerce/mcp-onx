@@ -37,12 +37,18 @@ export class MCPServerSDK {
   constructor(config: ServerConfig) {
     this.config = config;
 
-    // Create MCP SDK server
-    this.server = new Server(
+    this.server = this.createServer();
+    this.serviceOrchestrator = new ServiceOrchestrator();
+    this.toolRegistry = new ToolRegistry(this.serviceOrchestrator);
+  }
+
+  /** Create a new MCP Server instance with all handlers wired up. */
+  private createServer(): Server {
+    const server = new Server(
       {
-        name: config.server.name,
-        version: config.server.version,
-        description: config.server.description,
+        name: this.config.server.name,
+        version: this.config.server.version,
+        description: this.config.server.description,
       },
       {
         capabilities: {
@@ -53,22 +59,20 @@ export class MCPServerSDK {
       }
     );
 
-    this.serviceOrchestrator = new ServiceOrchestrator();
-    this.toolRegistry = new ToolRegistry(this.serviceOrchestrator);
-
-    this.setupHandlers();
+    this.setupHandlers(server);
+    return server;
   }
 
-  private setupHandlers(): void {
+  private setupHandlers(server: Server): void {
     // Handle tools/list requests
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
       Logger.debug('Handling tools/list request');
       const tools = this.toolRegistry.list();
       return { tools };
     });
 
     // Handle tools/call requests with improved response wrapping
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
 
       Logger.debug(`Handling tools/call request for: ${name}`);
@@ -104,25 +108,25 @@ export class MCPServerSDK {
     });
 
     // Handle ping requests
-    this.server.setRequestHandler(PingRequestSchema, async () => {
+    server.setRequestHandler(PingRequestSchema, async () => {
       Logger.debug('Handling ping request');
       return {};
     });
 
     // Handle prompts/list requests - return empty list since we don't support prompts
-    this.server.setRequestHandler(ListPromptsRequestSchema, async () => {
+    server.setRequestHandler(ListPromptsRequestSchema, async () => {
       Logger.debug('Handling prompts/list request');
       return { prompts: [] };
     });
 
     // Handle resources/list requests - return empty list since we don't support resources
-    this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    server.setRequestHandler(ListResourcesRequestSchema, async () => {
       Logger.debug('Handling resources/list request');
       return { resources: [] };
     });
 
     // Handle any other custom requests if needed
-    this.server.onerror = (error) => {
+    server.onerror = (error) => {
       Logger.error('Server error:', error);
     };
   }
@@ -283,7 +287,8 @@ export class MCPServerSDK {
             }
           };
 
-          await this.server.connect(transport);
+          const server = this.createServer();
+          await server.connect(transport);
           await transport.handleRequest(req, res, body);
           return;
         } else {
