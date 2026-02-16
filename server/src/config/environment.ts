@@ -31,6 +31,11 @@ export class EnvironmentConfig {
         }
       }
 
+      // Allow overriding apiKey from a separate env var (for Kubernetes secrets)
+      if (process.env.ADAPTER_API_KEY) {
+        (options as Record<string, unknown>).apiKey = process.env.ADAPTER_API_KEY;
+      }
+
       const adapterType = process.env.ADAPTER_TYPE as 'built-in' | 'npm' | 'local';
 
       // Build adapter config based on type to match discriminated union
