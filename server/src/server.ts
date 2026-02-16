@@ -3,10 +3,12 @@
  * This is the recommended approach for MCP servers
  */
 
+import { randomUUID } from 'node:crypto';
 import * as http from 'http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -15,6 +17,7 @@ import {
   PingRequestSchema,
   McpError,
   ErrorCode,
+  isInitializeRequest,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ToolRegistry } from './tools/registry.js';
 import { ServiceOrchestrator } from './services/service-orchestrator.js';
@@ -29,6 +32,7 @@ export class MCPServerSDK {
   private config: ServerConfig;
   private httpServer?: http.Server;
   private sseTransports: Map<string, SSEServerTransport> = new Map();
+  private streamableTransports: Map<string, StreamableHTTPServerTransport> = new Map();
 
   constructor(config: ServerConfig) {
     this.config = config;
@@ -215,6 +219,114 @@ export class MCPServerSDK {
     });
   }
 
+  async startStreamableHTTP(port: number): Promise<void> {
+    Logger.info('Starting MCP server with Streamable HTTP transport...');
+
+    await this.serviceOrchestrator.initialize(this.config.adapter);
+    await this.registerTools();
+
+    this.httpServer = http.createServer(async (req, res) => {
+      // CORS headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, last-event-id');
+      res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
+      const url = new URL(req.url || '/', `http://localhost:${port}`);
+
+      if (url.pathname === '/health' && req.method === 'GET') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', transport: 'streamable-http', sessions: this.streamableTransports.size }));
+        return;
+      }
+
+      if (url.pathname !== '/mcp') {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+      if (req.method === 'POST') {
+        // Read request body
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        const body = JSON.parse(Buffer.concat(chunks).toString());
+
+        let transport: StreamableHTTPServerTransport;
+
+        if (sessionId && this.streamableTransports.has(sessionId)) {
+          transport = this.streamableTransports.get(sessionId)!;
+        } else if (!sessionId && isInitializeRequest(body)) {
+          transport = new StreamableHTTPServerTransport({
+            sessionIdGenerator: () => randomUUID(),
+            onsessioninitialized: (id) => {
+              this.streamableTransports.set(id, transport);
+              Logger.info(`Streamable HTTP session initialized: ${id}`);
+            },
+          });
+
+          transport.onclose = () => {
+            const sid = transport.sessionId;
+            if (sid) {
+              this.streamableTransports.delete(sid);
+              Logger.info(`Streamable HTTP session closed: ${sid}`);
+            }
+          };
+
+          await this.server.connect(transport);
+          await transport.handleRequest(req, res, body);
+          return;
+        } else {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Bad Request: No valid session ID provided' }, id: null }));
+          return;
+        }
+
+        await transport.handleRequest(req, res, body);
+        return;
+      }
+
+      if (req.method === 'GET') {
+        if (!sessionId || !this.streamableTransports.has(sessionId)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid or missing session ID' }));
+          return;
+        }
+        const transport = this.streamableTransports.get(sessionId)!;
+        await transport.handleRequest(req, res);
+        return;
+      }
+
+      if (req.method === 'DELETE') {
+        if (!sessionId || !this.streamableTransports.has(sessionId)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid or missing session ID' }));
+          return;
+        }
+        const transport = this.streamableTransports.get(sessionId)!;
+        await transport.handleRequest(req, res);
+        return;
+      }
+
+      res.writeHead(405);
+      res.end();
+    });
+
+    this.httpServer.listen(port, () => {
+      Logger.info(`MCP server running on Streamable HTTP transport at http://0.0.0.0:${port}/mcp`);
+    });
+  }
+
   private async registerTools(): Promise<void> {
     Logger.debug('Registering Fulfillment tools...');
 
@@ -236,6 +348,12 @@ export class MCPServerSDK {
       await transport.close();
     }
     this.sseTransports.clear();
+
+    // Close all Streamable HTTP transports
+    for (const transport of this.streamableTransports.values()) {
+      await transport.close();
+    }
+    this.streamableTransports.clear();
 
     // Close HTTP server if running
     if (this.httpServer) {

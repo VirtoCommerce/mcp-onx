@@ -54,7 +54,7 @@ ENV NODE_ENV=production
 ENV LOG_LEVEL=info
 ENV ADAPTER_TYPE=local
 ENV ADAPTER_PATH=/app/virtocommerce-adapter/dist/index.js
-ENV MCP_TRANSPORT=sse
+ENV MCP_TRANSPORT=http
 ENV MCP_PORT=80
 
 EXPOSE 80

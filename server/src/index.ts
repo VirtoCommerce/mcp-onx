@@ -59,8 +59,10 @@ async function main() {
     const server = new MCPServerSDK(config);
 
     const transport = process.env.MCP_TRANSPORT || 'stdio';
-    if (transport === 'sse') {
-      const port = parseInt(process.env.MCP_PORT || '3000', 10);
+    const port = parseInt(process.env.MCP_PORT || '3000', 10);
+    if (transport === 'http') {
+      await server.startStreamableHTTP(port);
+    } else if (transport === 'sse') {
       await server.startSSE(port);
     } else {
       await server.start();
