@@ -19,7 +19,9 @@ export class EnvironmentConfig {
     
     // Adapter configuration
     if (process.env.ADAPTER_TYPE) {
-      let options = {};
+      let options: Record<string, unknown> = {};
+
+      // Option 1: ADAPTER_CONFIG as JSON string
       if (process.env.ADAPTER_CONFIG) {
         try {
           options = JSON.parse(process.env.ADAPTER_CONFIG);
@@ -31,10 +33,10 @@ export class EnvironmentConfig {
         }
       }
 
-      // Allow overriding apiKey from a separate env var (for Kubernetes secrets)
-      if (process.env.ADAPTER_API_KEY) {
-        (options as Record<string, unknown>).apiKey = process.env.ADAPTER_API_KEY;
-      }
+      // Option 2: Individual ADAPTER_* env vars (override ADAPTER_CONFIG values)
+      if (process.env.ADAPTER_API_URL) options.apiUrl = process.env.ADAPTER_API_URL;
+      if (process.env.ADAPTER_API_KEY) options.apiKey = process.env.ADAPTER_API_KEY;
+      if (process.env.ADAPTER_WORKSPACE) options.workspace = process.env.ADAPTER_WORKSPACE ?? 'default';
 
       const adapterType = process.env.ADAPTER_TYPE as 'built-in' | 'npm' | 'local';
 
