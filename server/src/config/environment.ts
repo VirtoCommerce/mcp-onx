@@ -36,7 +36,8 @@ export class EnvironmentConfig {
       // Option 2: Individual ADAPTER_* env vars (override ADAPTER_CONFIG values)
       if (process.env.ADAPTER_API_URL) options.apiUrl = process.env.ADAPTER_API_URL;
       if (process.env.ADAPTER_API_KEY) options.apiKey = process.env.ADAPTER_API_KEY;
-      if (process.env.ADAPTER_WORKSPACE) options.workspace = process.env.ADAPTER_WORKSPACE ?? 'default';
+      if (process.env.ADAPTER_WORKSPACE) options.workspace = process.env.ADAPTER_WORKSPACE;
+      if (process.env.ADAPTER_DEBUG_MODE) options.debugMode = process.env.ADAPTER_DEBUG_MODE === 'true';
 
       const adapterType = process.env.ADAPTER_TYPE as 'built-in' | 'npm' | 'local';
 
