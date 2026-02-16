@@ -156,12 +156,27 @@ export class MCPServerSDK {
       const url = new URL(req.url || '/', `http://localhost:${port}`);
 
       if (url.pathname === '/sse' && req.method === 'GET') {
+        // Disable nginx buffering so SSE events are forwarded immediately
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+
         // New SSE connection
         const transport = new SSEServerTransport('/messages', res);
         this.sseTransports.set(transport.sessionId, transport);
         Logger.info(`SSE client connected: ${transport.sessionId}`);
 
+        // Periodic keep-alive to prevent proxy/nginx from dropping idle connections
+        const pingInterval = setInterval(() => {
+          try {
+            res.write(':ping\n\n');
+          } catch {
+            clearInterval(pingInterval);
+          }
+        }, 15000);
+
         transport.onclose = () => {
+          clearInterval(pingInterval);
           this.sseTransports.delete(transport.sessionId);
           Logger.info(`SSE client disconnected: ${transport.sessionId}`);
         };
