@@ -62,7 +62,7 @@ ENV ADAPTER_PATH=/app/virtocommerce-adapter/dist/index.js
 ENV MCP_TRANSPORT=sse
 ENV MCP_PORT=3000
 
-EXPOSE 3000
+EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/health || exit 1
