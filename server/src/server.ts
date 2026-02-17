@@ -214,6 +214,8 @@ export class MCPServerSDK {
         return;
       }
 
+      Logger.info('MCP server received unknown request', { method: req.method, url: req.url });
+
       res.writeHead(404);
       res.end();
     });
