@@ -333,7 +333,8 @@ export class ApiClient {
    */
   updateApiKey(apiKey: string): void {
     this.config.apiKey = apiKey;
-    this.client.defaults.headers.common['X-API-Key'] = apiKey;
+    this.client.defaults.headers.common['api_key'] = apiKey;
+    // this.client.defaults.headers.common['X-API-Key'] = apiKey;
     // Or if using Bearer token:
     // this.client.defaults.headers.common['Authorization'] = `Bearer ${apiKey}`;
   }
