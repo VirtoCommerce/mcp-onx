@@ -53,10 +53,6 @@ export class ApiClient {
       (request) => {
         if (this.debugMode) {
           const headers = { ...request.headers } as Record<string, unknown>;
-          // Mask sensitive values
-          if (headers['api_key']) headers['api_key'] = '***';
-          if (headers['Authorization']) headers['Authorization'] = '***';
-
           console.error('[API Request]', {
             method: request.method?.toUpperCase(),
             baseURL: request.baseURL,
