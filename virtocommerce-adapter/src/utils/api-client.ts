@@ -52,9 +52,17 @@ export class ApiClient {
     this.client.interceptors.request.use(
       (request) => {
         if (this.debugMode) {
+          const headers = { ...request.headers } as Record<string, unknown>;
+          // Mask sensitive values
+          if (headers['api_key']) headers['api_key'] = '***';
+          if (headers['Authorization']) headers['Authorization'] = '***';
+
           console.error('[API Request]', {
             method: request.method?.toUpperCase(),
+            baseURL: request.baseURL,
             url: request.url,
+            fullUrl: `${request.baseURL}${request.url}`,
+            headers,
             params: request.params,
             data: request.data,
           });
