@@ -106,7 +106,9 @@ export class ProductTransformer extends BaseTransformer {
   private extractSelectedOptions(
     variation: CatalogProduct
   ): { name: string; value: string }[] | undefined {
-    if (!variation.properties?.length) return undefined;
+    if (!variation.properties?.length) {
+      return undefined;
+    }
 
     const options = variation.properties
       .filter((p) => p.type === 'Variation' && p.name && p.values?.length)
@@ -125,7 +127,9 @@ export class ProductTransformer extends BaseTransformer {
   private extractWeight(
     product: CatalogProduct
   ): { value: number; unit: 'lb' | 'oz' | 'kg' | 'g' } | undefined {
-    if (product.weight == null) return undefined;
+    if (product.weight == null) {
+      return undefined;
+    }
 
     const unitMap: Record<string, 'lb' | 'oz' | 'kg' | 'g'> = {
       lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
@@ -198,7 +202,9 @@ export class ProductTransformer extends BaseTransformer {
     return records
       .map((info) => {
         const sku = info.productId ? skuMap.get(info.productId) : undefined;
-        if (!sku) return undefined;
+        if (!sku) {
+          return undefined;
+        }
         return this.fromInventoryInfo(info, sku);
       })
       .filter((item): item is InventoryItem => item != null);
@@ -208,8 +214,12 @@ export class ProductTransformer extends BaseTransformer {
    * Map product status from VirtoCommerce fields
    */
   private mapProductStatus(product: CatalogProduct): string {
-    if (!product.isActive) return 'inactive';
-    if (!product.isBuyable) return 'draft';
+    if (!product.isActive) {
+      return 'inactive';
+    }
+    if (!product.isBuyable) {
+      return 'draft';
+    }
     return 'active';
   }
 
@@ -225,7 +235,9 @@ export class ProductTransformer extends BaseTransformer {
     const optionMap = new Map<string, Set<string>>();
 
     for (const variation of product.variations) {
-      if (!variation.properties) continue;
+      if (!variation.properties) {
+        continue;
+      }
       for (const prop of variation.properties) {
         if (prop.type === 'Variation' && prop.name && prop.values?.length) {
           const values = optionMap.get(prop.name) ?? new Set<string>();
@@ -249,7 +261,9 @@ export class ProductTransformer extends BaseTransformer {
    * Extract tags from product properties
    */
   private extractTags(properties?: ProductProperty[]): string[] | undefined {
-    if (!properties?.length) return undefined;
+    if (!properties?.length) {
+      return undefined;
+    }
 
     const tagProp = properties.find(
       (p) => p.name?.toLowerCase() === 'tags' || p.name?.toLowerCase() === 'tag'
@@ -271,7 +285,9 @@ export class ProductTransformer extends BaseTransformer {
   private extractCustomFields(
     properties?: ProductProperty[]
   ): { name: string; value: string }[] | undefined {
-    if (!properties?.length) return undefined;
+    if (!properties?.length) {
+      return undefined;
+    }
 
     const fields = properties
       .filter((p) => p.type === 'Product' && p.values?.length)

@@ -24,7 +24,27 @@
       "Bash(docker stop:*)",
       "Bash(docker rm:*)",
       "Bash(node -e:*)",
-      "Bash(docker compose up:*)"
+      "Bash(docker compose up:*)",
+      "mcp__plugin_serena_serena__find_symbol",
+      "Bash(npm info:*)",
+      "Bash(wc:*)",
+      "mcp__plugin_serena_serena__list_dir",
+      "mcp__plugin_serena_serena__activate_project",
+      "mcp__plugin_serena_serena__check_onboarding_performed",
+      "mcp__plugin_serena_serena__get_symbols_overview",
+      "mcp__plugin_serena_serena__read_file",
+      "mcp__plugin_serena_serena__search_for_pattern",
+      "mcp__plugin_serena_serena__replace_content",
+      "mcp__plugin_serena_serena__replace_symbol_body",
+      "Bash(dir:*)",
+      "Bash(cmd /c:*)",
+      "Bash(powershell.exe \"Get-ChildItem ''E:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\vc-module-order\\\\src'' -Recurse | Select-Object FullName\")",
+      "Bash(powershell.exe \"Get-ChildItem ''E:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\vc-module-order\\\\src'' -Recurse -Filter ''*.cs'' | Where-Object { $_.Name -match ''Order|Controller|Cancel'' } | Select-Object FullName\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''E:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\vc-module-order\\\\src'' -Recurse -Filter ''*.cs'' | Select-Object -ExpandProperty FullName\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''E:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\vc-module-order\\\\src'' -Recurse -Filter ''*.cs'' | Select-Object -ExpandProperty FullName | Out-String\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''E:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\vc-module-order\\\\src'' -Recurse -Filter ''*.cs'' | Select-Object -First 50 -ExpandProperty FullName\")",
+      "Bash(powershell.exe -Command:*)",
+      "mcp__plugin_serena_serena__insert_after_symbol"
     ]
   }
 }

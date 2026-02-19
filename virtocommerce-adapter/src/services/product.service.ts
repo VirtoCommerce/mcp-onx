@@ -54,7 +54,7 @@ export class ProductService extends BaseService {
         );
       }
 
-      const results = response.data?.results ?? [];
+      const results = response.data?.items ?? [];
       const products = this.transformer.fromCatalogProducts(results);
       return this.success<{ products: Product[] }>({ products });
     } catch (error: unknown) {
@@ -83,7 +83,7 @@ export class ProductService extends BaseService {
         );
       }
 
-      const results = response.data?.results ?? [];
+      const results = response.data?.items ?? [];
       const productVariants = this.transformer.fromCatalogProductVariants(results);
       return this.success<{ productVariants: ProductVariant[] }>({ productVariants });
     } catch (error: unknown) {
@@ -116,7 +116,7 @@ export class ProductService extends BaseService {
         );
       }
 
-      const products = catalogResponse.data?.results ?? [];
+      const products = catalogResponse.data?.items ?? [];
       if (!products.length) {
         return this.success<{ inventory: InventoryItem[] }>({ inventory: [] });
       }

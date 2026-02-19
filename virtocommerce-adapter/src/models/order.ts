@@ -20,11 +20,6 @@ import type { PaymentIn } from './payment.js';
 import type { Shipment } from './shipment.js';
 
 /**
- * Cancelled state for order operations
- */
-export type CancelledState = 'Undefined' | 'Requested' | 'Completed';
-
-/**
  * Base class for all order operations (orders, shipments, payments)
  */
 export interface OrderOperation extends AuditableEntity, HasOuterId, SupportsCancellation {
@@ -36,7 +31,6 @@ export interface OrderOperation extends AuditableEntity, HasOuterId, SupportsCan
   comment?: string;
   currency?: string;
   sum?: number;
-  cancelledState?: CancelledState;
   objectType?: string;
   dynamicProperties?: DynamicObjectProperty[];
   operationsLog?: OperationLog[];

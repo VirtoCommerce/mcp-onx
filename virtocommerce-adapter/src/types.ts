@@ -8,6 +8,7 @@ export interface AdapterOptions {
   apiUrl: string;
   apiKey: string;
   workspace?: string;
+  catalogId?: string;
   timeout?: number;
   retryAttempts?: number;
   debugMode?: boolean;
@@ -137,37 +138,41 @@ export interface YourFulfillmentShipment {
 }
 
 // Status mapping configuration
-// VirtoCommerce uses PascalCase for statuses
+// Keys are the actual VirtoCommerce status strings (from ModuleConstants.CustomerOrderStatus)
 export const STATUS_MAP: Record<string, string> = {
+  // Standard VC order statuses
   New: 'pending',
+  'Not payed': 'not_payed',
+  Pending: 'pending_approval',
   Processing: 'processing',
+  'Ready to send': 'ready_to_send',
+  Cancelled: 'cancelled',
+  'Partially sent': 'partially_shipped',
+  Completed: 'completed',
+  // Legacy/custom VC statuses kept for backwards compatibility
   Shipped: 'shipped',
   Delivered: 'delivered',
-  Cancelled: 'cancelled',
   OnHold: 'on_hold',
   Refunded: 'refunded',
   PartiallyShipped: 'partially_shipped',
   PartiallyDelivered: 'partially_delivered',
-  // Legacy lowercase mappings for backwards compatibility
-  shipped: 'shipped',
-  delivered: 'delivered',
-  cancelled: 'cancelled',
-  on_hold: 'on_hold',
-  refunded: 'refunded',
-  partially_shipped: 'partially_shipped',
-  partially_delivered: 'partially_delivered',
 };
 
-// Reverse mapping: normalized MCP status → VirtoCommerce PascalCase status
+// Reverse mapping: normalized MCP status → actual VirtoCommerce status string
 export const REVERSE_STATUS_MAP: Record<string, string> = {
   pending: 'New',
+  not_payed: 'Not payed',
+  pending_approval: 'Pending',
   processing: 'Processing',
+  ready_to_send: 'Ready to send',
+  cancelled: 'Cancelled',
+  partially_shipped: 'Partially sent',
+  completed: 'Completed',
+  // Non-standard VC statuses (VC accepts any string for status)
   shipped: 'Shipped',
   delivered: 'Delivered',
-  cancelled: 'Cancelled',
   on_hold: 'OnHold',
   refunded: 'Refunded',
-  partially_shipped: 'PartiallyShipped',
   partially_delivered: 'PartiallyDelivered',
 };
 

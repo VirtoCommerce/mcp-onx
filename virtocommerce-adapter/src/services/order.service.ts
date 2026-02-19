@@ -11,7 +11,6 @@ import type {
   UpdateOrderInput,
   GetOrdersInput,
 } from '@cof-org/mcp';
-import type { YourFulfillmentOrder } from '../types.js';
 import type {
   CustomerOrder,
   CustomerOrderSearchResult,
@@ -43,17 +42,21 @@ export class OrderService extends BaseService {
     this.transformer.setWorkspace(workspace);
   }
 
+  setCatalogId(catalogId: string): void {
+    this.transformer.setCatalogId(catalogId);
+  }
+
   async createSalesOrder(input: CreateSalesOrderInput): Promise<OrderResult> {
     try {
       const payload = this.transformer.fromCreateSalesOrderInput(input);
-      const response = await this.client.post<YourFulfillmentOrder>('/orders', payload);
+      const response = await this.client.post<CustomerOrder>('/api/order/customerOrders', payload);
 
       if (!response.success || !response.data) {
         return this.failure<{ order: Order }>('Failed to create order', response.error ?? response);
       }
 
       return this.success<{ order: Order }>({
-        order: this.transformer.toMcpOrder(response.data as unknown as CustomerOrder),
+        order: this.transformer.toMcpOrder(response.data),
       });
     } catch (error: unknown) {
       return this.failure<{ order: Order }>(`Order creation failed: ${getErrorMessage(error)}`, error);
@@ -94,12 +97,14 @@ export class OrderService extends BaseService {
         isCancelled: true,
         cancelledDate: new Date().toISOString(),
         cancelReason: input.reason ?? 'Customer requested cancellation',
-        cancelledState: 'Completed',
+        cancelledState: 'Requested',
         status: 'Cancelled',
-        comment: input.notes ? `${order.comment ?? ''}\n[Cancellation] ${input.notes}`.trim() : order.comment,
+        comment: input.notes
+          ? `${order.comment ?? ''}\n[Cancellation] ${input.notes}`.trim().slice(0, 2048)
+          : order.comment,
       };
 
-      // Save the updated order
+      // Save the updated order (PUT returns 204 No Content)
       const saveResponse = await this.client.put<CustomerOrder>(
         '/api/order/customerOrders',
         cancelledOrder
@@ -109,7 +114,14 @@ export class OrderService extends BaseService {
         return this.failure<{ order: Order }>('Failed to cancel order', saveResponse.error ?? saveResponse);
       }
 
-      const savedOrder = saveResponse.data ?? cancelledOrder;
+      // Fetch the saved order to get server-recalculated totals
+      const refetchResponse = await this.client.get<CustomerOrder>(
+        `/api/order/customerOrders/${input.orderId}`
+      );
+
+      const savedOrder = refetchResponse.success && refetchResponse.data
+        ? refetchResponse.data
+        : cancelledOrder;
 
       return this.success<{ order: Order }>({
         order: this.transformer.toMcpOrder(savedOrder),
@@ -146,7 +158,7 @@ export class OrderService extends BaseService {
         input.updates
       );
 
-      // Step 3: Save the updated order
+      // Step 3: Save the updated order (PUT returns 204 No Content)
       const saveResponse = await this.client.put<CustomerOrder>(
         '/api/order/customerOrders',
         updatedOrder
@@ -156,7 +168,14 @@ export class OrderService extends BaseService {
         return this.failure<{ order: Order }>('Failed to update order', saveResponse.error ?? saveResponse);
       }
 
-      const savedOrder = saveResponse.data ?? updatedOrder;
+      // Fetch the saved order to get server-recalculated totals
+      const refetchResponse = await this.client.get<CustomerOrder>(
+        `/api/order/customerOrders/${input.id}`
+      );
+
+      const savedOrder = refetchResponse.success && refetchResponse.data
+        ? refetchResponse.data
+        : updatedOrder;
 
       return this.success<{ order: Order }>({
         order: this.transformer.toMcpOrder(savedOrder),

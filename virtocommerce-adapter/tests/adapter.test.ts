@@ -631,12 +631,39 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
     describe('getCustomers', () => {
       it('should get customers by IDs', async () => {
+        const response = readResponse('getCustomers/getCustomers');
         postSpy.mockResolvedValue({
           success: true,
-          data: {
-            totalCount: 1,
-            results: [
-              {
+          data: JSON.parse(response),
+        });
+
+        const input: GetCustomersInput = {
+          ids: ['CUST-001'],
+        };
+
+        const result = await adapter.getCustomers(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.customers).toHaveLength(1);
+          expect(result.customers[0]?.id).toBe('CUST-001');
+          expect(result.customers[0]?.firstName).toBe('John');
+          expect(result.customers[0]?.lastName).toBe('Doe');
+          expect(result.customers[0]?.email).toBe('john@example.com');
+          expect(result.customers[0]?.phone).toBe('+1234567890');
+          expect(result.customers[0]?.externalId).toBe('EXT-CUST-001');
+          expect(result.customers[0]?.tags).toEqual(['VIP']);
+        }
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/members/search',
+          expect.objectContaining({
+            objectIds: ['CUST-001'],
+            memberTypes: ['Contact'],
+            responseGroup: 'Full',
+          })
+        );
+      });
+
                 id: 'CUST-001',
                 memberType: 'Contact',
                 firstName: 'John',

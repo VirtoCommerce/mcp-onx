@@ -272,6 +272,10 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
     if (options.workspace) {
       this.orderService.setWorkspace(options.workspace);
     }
+
+    if (options.catalogId) {
+      this.orderService.setCatalogId(options.catalogId);
+    }
   }
 
   private getTenantId(): string {

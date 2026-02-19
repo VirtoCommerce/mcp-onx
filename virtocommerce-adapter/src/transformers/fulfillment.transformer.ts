@@ -3,20 +3,23 @@
  */
 
 import type { Fulfillment, FulfillOrderInput } from '@cof-org/mcp';
-import type { Shipment } from '../models/index.js';
+import type { Shipment, ShipmentItem, LineItem } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';
 
 const SHIPMENT_STATUS_MAP: Record<string, string> = {
+  // Standard VC shipment statuses (from ModuleConstants)
   New: 'pending',
   PickPack: 'processing',
-  ReadyToShip: 'ready_to_ship',
+  ReadyToSend: 'ready_to_send',
+  Sent: 'shipped',
+  Cancelled: 'cancelled',
+  // Non-standard but kept for backwards compatibility
   Shipped: 'shipped',
   Delivered: 'delivered',
-  Cancelled: 'cancelled',
   OnHold: 'on_hold',
   PartiallyShipped: 'partially_shipped',
-};
+};;
 
 export class FulfillmentTransformer extends BaseTransformer {
   private addressTransformer: AddressTransformer;
@@ -57,7 +60,7 @@ export class FulfillmentTransformer extends BaseTransformer {
       shippingClass: shipment.shipmentMethodOption,
       shippingCode: shipment.shipmentMethodCode,
       shippingPrice: shipment.price,
-      shippingNote: shipment.trackingUrl ?? shipment.comment,
+      shippingNote: shipment.comment,
       expectedDeliveryDate: shipment.deliveryDate,
       createdAt: shipment.createdDate ?? this.now(),
       updatedAt: shipment.modifiedDate ?? this.now(),
@@ -75,7 +78,24 @@ export class FulfillmentTransformer extends BaseTransformer {
   /**
    * Transform FulfillOrderInput to VirtoCommerce Shipment payload
    */
-  fromFulfillOrderInput(input: FulfillOrderInput): Record<string, unknown> {
+  fromFulfillOrderInput(input: FulfillOrderInput, orderItems?: LineItem[], orderCurrency?: string): Shipment {
+    // Resolve input line items (by SKU) to VirtoCommerce ShipmentItems (by lineItemId)
+    const shipmentItems: ShipmentItem[] = [];
+    for (const inputItem of input.lineItems ?? []) {
+      const matchedLineItem = orderItems?.find((li) => li.sku === inputItem.sku);
+      if (matchedLineItem?.id) {
+        shipmentItems.push({
+          lineItemId: matchedLineItem.id,
+          quantity: inputItem.quantity ?? matchedLineItem.quantity ?? 0,
+        });
+      }
+    }
+
+    const commentParts = [input.giftNote, input.shippingNote].filter(Boolean);
+    const comment = commentParts.length > 0
+      ? commentParts.join('\n').slice(0, 2048)
+      : undefined;
+
     return {
       trackingNumber: input.trackingNumbers?.[0],
       shipmentMethodCode: input.shippingCarrier,
@@ -83,26 +103,12 @@ export class FulfillmentTransformer extends BaseTransformer {
       fulfillmentCenterId: input.locationId,
       deliveryDate: input.expectedDeliveryDate,
       deliveryAddress: input.shippingAddress
-        ? {
-            line1: input.shippingAddress.address1,
-            line2: input.shippingAddress.address2,
-            city: input.shippingAddress.city,
-            regionName: input.shippingAddress.stateOrProvince,
-            postalCode: input.shippingAddress.zipCodeOrPostalCode,
-            countryName: input.shippingAddress.country,
-            phone: input.shippingAddress.phone,
-            email: input.shippingAddress.email,
-            name: [input.shippingAddress.firstName, input.shippingAddress.lastName]
-              .filter(Boolean)
-              .join(' '),
-            organization: input.shippingAddress.company,
-          }
+        ? this.addressTransformer.toVirtoAddress(input.shippingAddress, 'Shipping')
         : undefined,
-      items: input.lineItems?.map((item) => ({
-        sku: item.sku,
-        quantity: item.quantity ?? 0,
-      })),
-      comment: input.giftNote ?? input.shippingNote,
+      items: shipmentItems,
+      comment,
+      currency: orderCurrency,
+      price: input.shippingPrice,
     };
   }
 

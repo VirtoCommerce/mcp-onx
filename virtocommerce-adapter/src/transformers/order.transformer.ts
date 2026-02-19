@@ -11,7 +11,7 @@ import type {
   UpdateOrderInput,
 } from '@cof-org/mcp';
 import { STATUS_MAP, REVERSE_STATUS_MAP } from '../types.js';
-import type { CustomerOrder, LineItem, DynamicObjectProperty, Contact } from '../models/index.js';
+import type { CustomerOrder, LineItem, Shipment, DynamicObjectProperty, Contact } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';
 import { CustomerTransformer } from './customer.transformer.js';
@@ -20,6 +20,7 @@ export class OrderTransformer extends BaseTransformer {
   private addressTransformer: AddressTransformer;
   private customerTransformer: CustomerTransformer;
   private workspace?: string;
+  private catalogId?: string;
 
   constructor(tenantId: string = 'default-workspace', workspace?: string) {
     super(tenantId);
@@ -36,6 +37,10 @@ export class OrderTransformer extends BaseTransformer {
 
   setWorkspace(workspace: string): void {
     this.workspace = workspace;
+  }
+
+  setCatalogId(catalogId: string): void {
+    this.catalogId = catalogId;
   }
 
   /**
@@ -89,42 +94,67 @@ export class OrderTransformer extends BaseTransformer {
   /**
    * Transform CreateSalesOrderInput to API payload
    */
-  fromCreateSalesOrderInput(input: CreateSalesOrderInput): Record<string, unknown> {
+  fromCreateSalesOrderInput(input: CreateSalesOrderInput): CustomerOrder {
     const order = input.order;
     if (!order) {
       return {};
     }
 
-    return {
-      external_id: order.externalId ?? order.name,
-      status: order.status,
-      total: order.totalPrice,
-      currency: order.currency ?? 'USD',
-      customer: order.customer
-        ? {
-          id: order.customer.id ?? order.customer.externalId ?? order.customer.email,
-          email: order.customer.email,
-          first_name: order.customer.firstName,
-          last_name: order.customer.lastName,
-          phone: order.customer.phone,
-        }
+    const currency = order.currency ?? 'USD';
+
+    const addresses = [
+      order.shippingAddress
+        ? this.addressTransformer.toVirtoAddress(order.shippingAddress, 'Shipping')
         : undefined,
-      items: order.lineItems?.map((item) => ({
+      order.billingAddress
+        ? this.addressTransformer.toVirtoAddress(order.billingAddress, 'Billing')
+        : undefined,
+    ].filter((a): a is NonNullable<typeof a> => a !== undefined);
+
+    const items: LineItem[] =
+      order.lineItems?.map((item) => ({
         sku: item.sku,
         name: item.name,
         quantity: item.quantity ?? 0,
         price: item.unitPrice ?? 0,
-        subtotal: item.totalPrice ?? item.unitPrice ?? 0,
-        discount: 0,
-        tax: 0,
-      })),
-      shipping_address: this.addressTransformer.toFulfillmentAddress(order.shippingAddress),
-      billing_address: this.addressTransformer.toFulfillmentAddress(order.billingAddress),
-      notes: order.orderNote,
-      metadata: {
-        source: order.orderSource,
-        workspace: this.workspace,
-      },
+        placedPrice: item.unitPrice ?? 0,
+        currency,
+        catalogId: this.catalogId,
+      })) ?? [];
+
+    const shipments: Shipment[] = order.shippingAddress
+      ? [
+          {
+            deliveryAddress: this.addressTransformer.toVirtoAddress(
+              order.shippingAddress,
+              'Shipping'
+            ),
+            currency,
+          },
+        ]
+      : [];
+
+    const customerName = order.customer
+      ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ')
+        || order.customer.email
+        || order.customer.id
+        || order.customer.externalId
+      : undefined;
+
+    return {
+      outerId: order.externalId,
+      number: order.name ?? order.externalId ?? `ORD-${Date.now()}`,
+      status: order.status ? this.reverseMapStatus(order.status) : 'New',
+      currency,
+      total: order.totalPrice,
+      subTotal: order.subTotalPrice,
+      customerId: order.customer?.id ?? order.customer?.externalId,
+      customerName,
+      storeId: this.workspace,
+      comment: order.orderNote,
+      items,
+      addresses: addresses.length ? addresses : undefined,
+      shipments: shipments.length ? shipments : undefined,
     };
   }
 
@@ -142,7 +172,7 @@ export class OrderTransformer extends BaseTransformer {
 
     const orderNote = this.valueOrUndefined((updates as { orderNote?: string | null }).orderNote);
     if (orderNote !== undefined) {
-      updated.comment = orderNote;
+      updated.comment = orderNote.slice(0, 2048);
     }
 
     const shippingAddress = this.valueOrUndefined(
@@ -166,6 +196,23 @@ export class OrderTransformer extends BaseTransformer {
     if (billingAddress) {
       const virtoBilling = this.addressTransformer.toVirtoAddress(billingAddress, 'Billing');
       this.upsertAddress(updated, virtoBilling, 'Billing');
+    }
+
+    const lineItems = this.valueOrUndefined(
+      (updates as { lineItems?: UpdateOrderInput['updates']['lineItems'] }).lineItems
+    );
+    if (lineItems?.length) {
+      updated.items = (updated.items ?? []).map((item) => {
+        const patch = lineItems.find((li) => li.sku === item.sku);
+        if (!patch) return item;
+        return {
+          ...item,
+          quantity: patch.quantity ?? item.quantity,
+          price: patch.unitPrice ?? item.price,
+          placedPrice: patch.unitPrice ?? item.placedPrice,
+          name: patch.name ?? item.name,
+        };
+      });
     }
 
     return updated;

@@ -157,6 +157,8 @@ export interface HasDimension {
   width?: number;
 }
 
+export type CancelledState = 'Undefined' | 'Requested' | 'Completed';
+
 /**
  * Interface for cancellable entities
  */
@@ -164,6 +166,7 @@ export interface SupportsCancellation {
   isCancelled?: boolean;
   cancelledDate?: string;
   cancelReason?: string;
+  cancelledState?: CancelledState;
 }
 
 /**

@@ -23,6 +23,7 @@ export type {
   OperationLog,
   HasDimension,
   SupportsCancellation,
+  CancelledState,
   HasOuterId,
   Taxable,
   HasDiscounts,
@@ -32,7 +33,6 @@ export type {
 
 // Order models
 export type {
-  CancelledState,
   OrderOperation,
   CustomerOrder,
   ConfigurationItem,

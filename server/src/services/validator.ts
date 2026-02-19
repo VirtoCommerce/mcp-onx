@@ -17,7 +17,6 @@ export class Validator {
       verbose: true,
       strict: false,
       validateFormats: true,
-      coerceTypes: true,
     });
   }
 

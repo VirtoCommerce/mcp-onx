@@ -19,9 +19,7 @@ export class EnvironmentConfig {
     
     // Adapter configuration
     if (process.env.ADAPTER_TYPE) {
-      let options: Record<string, unknown> = {};
-
-      // Option 1: ADAPTER_CONFIG as JSON string
+      let options = {};
       if (process.env.ADAPTER_CONFIG) {
         try {
           options = JSON.parse(process.env.ADAPTER_CONFIG);
@@ -32,12 +30,6 @@ export class EnvironmentConfig {
           });
         }
       }
-
-      // Option 2: Individual ADAPTER_* env vars (override ADAPTER_CONFIG values)
-      if (process.env.ADAPTER_API_URL) options.apiUrl = process.env.ADAPTER_API_URL;
-      if (process.env.ADAPTER_API_KEY) options.apiKey = process.env.ADAPTER_API_KEY;
-      if (process.env.ADAPTER_WORKSPACE) options.workspace = process.env.ADAPTER_WORKSPACE;
-      if (process.env.ADAPTER_DEBUG_MODE) options.debugMode = process.env.ADAPTER_DEBUG_MODE === 'true';
 
       const adapterType = process.env.ADAPTER_TYPE as 'built-in' | 'npm' | 'local';
 

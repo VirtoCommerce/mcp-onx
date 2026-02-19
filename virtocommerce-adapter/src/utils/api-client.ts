@@ -51,7 +51,7 @@ export class ApiClient {
     // Request interceptor for debugging
     this.client.interceptors.request.use(
       (request) => {
-        if (this.debugMode) {
+        if (this.debugMode && request.url !== '/health') {
           const headers = { ...request.headers } as Record<string, unknown>;
           console.error('[API Request]', {
             method: request.method?.toUpperCase(),
@@ -76,7 +76,7 @@ export class ApiClient {
     // Response interceptor for debugging and error handling
     this.client.interceptors.response.use(
       (response) => {
-        if (this.debugMode) {
+        if (this.debugMode && response.config.url !== '/health') {
           console.error('[API Response]', {
             status: response.status,
             statusText: response.statusText,

@@ -203,5 +203,5 @@ export interface ProductSearchCriteria {
  */
 export interface ProductSearchResult {
   totalCount?: number;
-  results?: CatalogProduct[];
+  items?: CatalogProduct[];
 }
