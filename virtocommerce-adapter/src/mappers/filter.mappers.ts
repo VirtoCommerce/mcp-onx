@@ -192,7 +192,6 @@ export function mapProductVariantFilters(input: GetProductVariantsInput): Record
  */
 export function mapCustomerFiltersToSearchCriteria(input: GetCustomersInput): MemberSearchCriteria {
   const criteria: MemberSearchCriteria = {
-    memberTypes: ['Contact'],
     responseGroup: 'Full',
   };
 
@@ -207,6 +206,7 @@ export function mapCustomerFiltersToSearchCriteria(input: GetCustomersInput): Me
 
   criteria.skip = input.skip ?? 0;
   criteria.take = input.pageSize ?? 20;
+  criteria.deepSearch = true;
 
   return criteria;
 }

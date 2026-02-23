@@ -61,6 +61,7 @@ export class CustomerService extends BaseService {
       // VirtoCommerce API: POST /api/members/search
       const searchCriteria: MemberSearchCriteria = {
         objectIds: uniqueIds,
+        deepSearch: true,
         memberTypes: ['Contact'],
         take: uniqueIds.length,
         responseGroup: 'Full',
