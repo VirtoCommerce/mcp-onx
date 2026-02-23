@@ -205,3 +205,43 @@ export interface ProductSearchResult {
   totalCount?: number;
   items?: CatalogProduct[];
 }
+
+/**
+ * List entry search criteria for /api/catalog/listentries
+ */
+export interface ListEntrySearchCriteria {
+  keyword?: string;
+  catalogId?: string;
+  catalogIds?: string[];
+  categoryId?: string;
+  categoryIds?: string[];
+  searchInChildren?: boolean;
+  searchInVariations?: boolean;
+  withHidden?: boolean;
+  responseGroup?: string;
+  objectIds?: string[];
+  skip?: number;
+  take?: number;
+}
+
+/**
+ * List entry base - returned by /api/catalog/listentries
+ */
+export interface ListEntryBase {
+  id?: string;
+  type?: string;
+  code?: string;
+  name?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  catalogId?: string;
+}
+
+/**
+ * List entry search result
+ */
+export interface ListEntrySearchResult {
+  totalCount?: number;
+  results?: ListEntryBase[];
+  listEntries?: ListEntryBase[];
+}

@@ -113,6 +113,9 @@ export type {
   CategoryLink,
   ProductSearchCriteria,
   ProductSearchResult,
+  ListEntrySearchCriteria,
+  ListEntryBase,
+  ListEntrySearchResult,
 } from './catalog.js';
 
 // Inventory models

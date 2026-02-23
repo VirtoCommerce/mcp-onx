@@ -280,6 +280,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
 
     if (options.catalogId) {
       this.orderService.setCatalogId(options.catalogId);
+      this.productService.setCatalogId(options.catalogId);
     }
   }
 
@@ -290,6 +291,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
       if (storeResponse.success && storeResponse.data?.catalog) {
         this.options.catalogId = storeResponse.data.catalog;
         this.orderService.setCatalogId(storeResponse.data.catalog);
+        this.productService.setCatalogId(storeResponse.data.catalog);
         console.error(`Resolved catalogId "${storeResponse.data.catalog}" from store "${this.options.workspace}"`);
       } else {
         console.error(`Warning: Could not resolve catalogId from store "${this.options.workspace}"`);

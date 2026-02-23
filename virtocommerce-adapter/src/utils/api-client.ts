@@ -53,7 +53,7 @@ export class ApiClient {
       (request) => {
         if (this.debugMode && request.url !== '/health') {
           const headers = { ...request.headers } as Record<string, unknown>;
-          console.error('[API Request]', {
+          console.error('[API Request]', JSON.stringify({
             method: request.method?.toUpperCase(),
             baseURL: request.baseURL,
             url: request.url,
@@ -61,7 +61,7 @@ export class ApiClient {
             headers,
             params: request.params,
             data: request.data,
-          });
+          }, null, 2));
         }
         return request;
       },
@@ -77,24 +77,24 @@ export class ApiClient {
     this.client.interceptors.response.use(
       (response) => {
         if (this.debugMode && response.config.url !== '/health') {
-          console.error('[API Response]', {
+          console.error('[API Response]', JSON.stringify({
             status: response.status,
             statusText: response.statusText,
             url: response.config.url,
             data: response.data,
-          });
+          }, null, 2));
         }
         return response;
       },
       (error) => {
         if (this.debugMode) {
-          console.error('[API Response Error]', {
+          console.error('[API Response Error]', JSON.stringify({
             message: error.message,
             status: error.response?.status,
             statusText: error.response?.statusText,
             url: error.config?.url,
             data: error.response?.data,
-          });
+          }, null, 2));
         }
         return Promise.reject(error);
       }
