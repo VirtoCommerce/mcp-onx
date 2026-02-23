@@ -112,6 +112,11 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
 
       this.connected = true;
       console.error('Successfully connected to VirtoCommerce');
+
+      // Fetch catalogId from store configuration if workspace is set and catalogId is not already provided
+      if (this.options.workspace && !this.options.catalogId) {
+        await this.fetchCatalogId();
+      }
     } catch (error: unknown) {
       this.connected = false;
       throw new AdapterError(
@@ -275,6 +280,22 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
 
     if (options.catalogId) {
       this.orderService.setCatalogId(options.catalogId);
+    }
+  }
+
+  private async fetchCatalogId(): Promise<void> {
+    try {
+      const storeResponse = await this.client.get<{ catalog?: string }>(`/api/stores/${this.options.workspace}`);
+
+      if (storeResponse.success && storeResponse.data?.catalog) {
+        this.options.catalogId = storeResponse.data.catalog;
+        this.orderService.setCatalogId(storeResponse.data.catalog);
+        console.error(`Resolved catalogId "${storeResponse.data.catalog}" from store "${this.options.workspace}"`);
+      } else {
+        console.error(`Warning: Could not resolve catalogId from store "${this.options.workspace}"`);
+      }
+    } catch (error: unknown) {
+      console.error(`Warning: Failed to fetch store info for catalogId resolution: ${getErrorMessage(error)}`);
     }
   }
 
