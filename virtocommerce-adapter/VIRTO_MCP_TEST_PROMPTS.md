@@ -73,7 +73,7 @@ What information do you have on customer b2badmin@test.com
 ```
 Show me product details for SKU 566903892
 ```
-:x: No endpoint for search product by SKU
+:white_check_mark: Passed - returns product details for 08c33cfc9f664426a52fac8882da2df0
 ```
 Get information about product 08c33cfc9f664426a52fac8882da2df0
 ```
@@ -90,50 +90,58 @@ Find product 47e4aaef9c9e4326924d4a4080f461a5 and show me all its attributes
 
 ### 4. Get Inventory Tool
 ```
-Check inventory for SKU 566903892 at warehouse e5aea833-dfce-4347-bf38-a479d33dce28
+Check inventory for SKU 566903892 at warehouse vendor-fulfillment
 ```
-:x: No endpoint for inventory by SKU
+:white_check_mark: Passed - returns inventory levels for SKU 566903892 at vendor-fulfillment
 ```
-What's the available stock for TSH-002 in location WH002?
+What's the available stock for 566903892 in location vendor-fulfillment?
 ```
-:x:
+:white_check_mark: Passed - returns available stock for SKU 566903892 in location vendor-fulfillment
 ```
-Show me inventory levels for COF-003 across all warehouses
+Show me inventory levels for 566903892 across all warehouses
 ```
+:white_check_mark: Passed - returns inventory levels for SKU 566903892 across all warehouses
 ```
-Get inventory status for WID-001 at WH003
+Get inventory status for 566903892 at vendor-fulfillment
 ```
+:white_check_mark: Passed - returns inventory status for SKU 566903892 at vendor-fulfillment
+
 
 ### 5. Get Shipment Tool
 ```
 Get shipment details for order CO220518-00001
 ```
-:x: there is a search only for the particular order, not for a collection
+:white_check_mark: Passed - returns shipment details for order CO220518-00001
 
 ```
-Show me the shipment information for order WEB-2024-1002
+Show me the shipment information for order CO220518-00001
 ```
+:white_check_mark: Passed - returns shipment information for order CO220518-00001
 ```
-Check if order_001 has been shipped
+Check if CO220518-00001 has been shipped
 ```
+:white_check_mark: Passed - returns shipment status ("not shipped")
 ```
-Find shipment tracking for order EXT-001
+Find shipment tracking for order CO220518-00001
 ```
-:x: didn't test it
+:white_check_mark: Passwed
 
 ### 6. Get Buyer Tool
 ```
-Get buyer information for order order_001
+Get buyer information for order CO220518-00001
 ```
+:white_check_mark: Passed - returns buyer information for order CO220518-00001
 ```
-Who is the buyer for order ORD-1001?
+Who is the buyer for order CO220518-00001?
 ```
+:white_check_mark: Passed - returns buyer name and contact info for order CO220518-00001
+Show me the buyer details for order CO220518-00001
 ```
-Show me the buyer details for order_002
+:white_check_mark: Passed - returns buyer details for order CO220518-00001
 ```
+Find the customer who placed order CO220518-00001
 ```
-Find the customer who placed order WEB-2024-1002
-```
+:white_check_mark: Passed - returns customer details for b2b admin
 
 ---
 

@@ -237,11 +237,12 @@ export function mapFulfillmentFiltersToSearchCriteria(input: GetFulfillmentsInpu
   };
 
   if (input.ids?.length) {
-    criteria.objectIds = input.ids;
+    criteria.ids = input.ids;
   }
 
+  // VC ShipmentSearchCriteria supports single orderId, not an array
   if (input.orderIds?.length) {
-    criteria.orderIds = input.orderIds;
+    criteria.orderId = input.orderIds[0];
   }
 
   if (input.createdAtMin) {

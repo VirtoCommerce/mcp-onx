@@ -107,6 +107,29 @@ export class FulfillmentService extends BaseService {
     input: GetFulfillmentsInput
   ): Promise<FulfillmentToolResult<{ fulfillments: Fulfillment[] }>> {
     try {
+      // VC ShipmentSearchCriteria supports single orderId only,
+      // so we run a separate request per orderId and merge results
+      if (input.orderIds && input.orderIds.length > 1) {
+        const allShipments: Shipment[] = [];
+
+        for (const orderId of input.orderIds) {
+          const perOrderInput = { ...input, orderIds: [orderId] };
+          const searchCriteria = mapFulfillmentFiltersToSearchCriteria(perOrderInput);
+
+          const response = await this.client.post<{ results?: Shipment[]; totalCount?: number }>(
+            '/api/order/shipments/search',
+            searchCriteria
+          );
+
+          if (response.success) {
+            allShipments.push(...(response.data?.results ?? []));
+          }
+        }
+
+        const fulfillments = this.transformer.fromShipments(allShipments);
+        return this.success<{ fulfillments: Fulfillment[] }>({ fulfillments });
+      }
+
       const searchCriteria = mapFulfillmentFiltersToSearchCriteria(input);
 
       const response = await this.client.post<{ results?: Shipment[]; totalCount?: number }>(

@@ -160,19 +160,21 @@ export interface PaymentSearchCriteria extends SearchCriteriaBase {
  * Shipment search criteria
  */
 export interface ShipmentSearchCriteria extends SearchCriteriaBase {
-  orderNumber?: string;
-  orderNumbers?: string[];
+  // From OrderOperationSearchCriteriaBase
+  ids?: string[];
+  outerIds?: string[];
+  hasParentOperation?: boolean;
+  parentOperationId?: string;
+  numbers?: string[];
+  number?: string;
+  // ShipmentSearchCriteria own fields
   orderId?: string;
-  orderIds?: string[];
+  orderNumber?: string;
   status?: string;
   statuses?: string[];
-  customerId?: string;
-  customerIds?: string[];
   storeIds?: string[];
   fulfillmentCenterId?: string;
-  fulfillmentCenterIds?: string[];
   employeeId?: string;
-  employeeIds?: string[];
   startDate?: string;
   endDate?: string;
   shipmentMethodCode?: string;
