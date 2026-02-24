@@ -83,7 +83,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
     // Initialize services
     this.orderService = new OrderService(this.client, tenantId, this.options.workspace);
     this.customerService = new CustomerService(this.client, tenantId);
-    this.fulfillmentService = new FulfillmentService(this.client, tenantId);
+    this.fulfillmentService = new FulfillmentService(this.client, tenantId, this.options.workspace);
     this.productService = new ProductService(this.client, tenantId);
     this.returnService = new ReturnService(this.client);
   }
@@ -276,6 +276,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
 
     if (options.workspace) {
       this.orderService.setWorkspace(options.workspace);
+      this.fulfillmentService.setWorkspace(options.workspace);
     }
 
     if (options.catalogId) {

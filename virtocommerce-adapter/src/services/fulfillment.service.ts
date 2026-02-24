@@ -17,14 +17,20 @@ import { ApiClient } from '../utils/api-client.js';
 
 export class FulfillmentService extends BaseService {
   private transformer: FulfillmentTransformer;
+  private workspace?: string;
 
-  constructor(client: ApiClient, tenantId: string = 'default-workspace') {
+  constructor(client: ApiClient, tenantId: string = 'default-workspace', workspace?: string) {
     super(client);
+    this.workspace = workspace;
     this.transformer = new FulfillmentTransformer(tenantId);
   }
 
   setTenantId(tenantId: string): void {
     this.transformer.setTenantId(tenantId);
+  }
+
+  setWorkspace(workspace: string): void {
+    this.workspace = workspace;
   }
 
   async fulfillOrder(
@@ -116,6 +122,11 @@ export class FulfillmentService extends BaseService {
           const perOrderInput = { ...input, orderIds: [orderId] };
           const searchCriteria = mapFulfillmentFiltersToSearchCriteria(perOrderInput);
 
+          // Filter by store when workspace is configured
+          if (this.workspace) {
+            searchCriteria.storeIds = [this.workspace];
+          }
+
           const response = await this.client.post<{ results?: Shipment[]; totalCount?: number }>(
             '/api/order/shipments/search',
             searchCriteria
@@ -131,6 +142,11 @@ export class FulfillmentService extends BaseService {
       }
 
       const searchCriteria = mapFulfillmentFiltersToSearchCriteria(input);
+
+      // Filter by store when workspace is configured
+      if (this.workspace) {
+        searchCriteria.storeIds = [this.workspace];
+      }
 
       const response = await this.client.post<{ results?: Shipment[]; totalCount?: number }>(
         '/api/order/shipments/search',

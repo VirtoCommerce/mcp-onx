@@ -53,6 +53,11 @@ export class ProductService extends BaseService {
 
       const searchCriteria = mapProductFiltersToSearchCriteria(input);
 
+      // Filter by catalog when catalogId is configured
+      if (this.catalogId) {
+        searchCriteria.catalogIds = [this.catalogId];
+      }
+
       const response = await this.client.post<ProductSearchResult>(
         '/api/catalog/search/products',
         searchCriteria
@@ -137,6 +142,11 @@ export class ProductService extends BaseService {
   ): Promise<FulfillmentToolResult<{ productVariants: ProductVariant[] }>> {
     try {
       const searchCriteria = mapProductVariantFiltersToSearchCriteria(input);
+
+      // Filter by catalog when catalogId is configured
+      if (this.catalogId) {
+        searchCriteria.catalogIds = [this.catalogId];
+      }
 
       const response = await this.client.post<ProductSearchResult>(
         '/api/catalog/search/products',

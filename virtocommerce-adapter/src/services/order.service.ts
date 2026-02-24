@@ -26,9 +26,11 @@ import { ApiClient } from '../utils/api-client.js';
 export class OrderService extends BaseService {
   private transformer: OrderTransformer;
   private customerService: CustomerService;
+  private workspace?: string;
 
   constructor(client: ApiClient, tenantId: string = 'default-workspace', workspace?: string) {
     super(client);
+    this.workspace = workspace;
     this.transformer = new OrderTransformer(tenantId, workspace);
     this.customerService = new CustomerService(client, tenantId);
   }
@@ -39,6 +41,7 @@ export class OrderService extends BaseService {
   }
 
   setWorkspace(workspace: string): void {
+    this.workspace = workspace;
     this.transformer.setWorkspace(workspace);
   }
 
@@ -189,6 +192,11 @@ export class OrderService extends BaseService {
     try {
       // Build VirtoCommerce search criteria from input
       const searchCriteria: CustomerOrderSearchCriteria = mapOrderFiltersToSearchCriteria(input);
+
+      // Filter by store when workspace is configured
+      if (this.workspace) {
+        searchCriteria.storeIds = [this.workspace];
+      }
 
       const response = await this.client.post<CustomerOrderSearchResult>(
         '/api/order/customerOrders/search',
