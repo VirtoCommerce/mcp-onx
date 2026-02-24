@@ -22,12 +22,12 @@ Copy and paste these prompts into Claude Desktop to test each MCP tool. The mock
 - **fa90d0b3-4bf5-4fc8-8c7c-787cafc4c678**: Alla Volkova (allagrvolkova@mail.ru)
 
 ### Available Products/SKUs
-- **prod_001** / WID-001: Wireless Bluetooth Headphones ($199.99)
-- **prod_002** / TSH-002: Organic Cotton T-Shirt ($29.99)
-- **prod_003** / COF-003: Premium Coffee Beans ($24.99)
+- **47e4aaef9c9e4326924d4a4080f461a5** / 564698896: Wireless Bluetooth Headphones ($199.99)
+- **08c33cfc9f664426a52fac8882da2df0** / 566903892: Organic Cotton T-Shirt ($29.99)
+- **6ee23bd045a549d785d9abc7e2a61b02** / 552223579: Premium Coffee Beans ($24.99)
 
 ### Warehouse Locations
-- WH001, WH002, WH003 (all have inventory for each product)
+- vendor-fulfillment
 
 ---
 
@@ -149,7 +149,7 @@ Find the customer who placed order CO220518-00001
 
 ### 7. Capture Order Tool
 ```
-Create a new order for customer cust_001 with 2 units of WID-001 shipping to 123 Main St, New York, NY 10001
+Create a new order for customer cb0a5340-f9fb-4f49-bd62-9d03518868ff with 2 units of 47e4aaef9c9e4326924d4a4080f461a5 shipping to 123 Main St, New York, NY 10001
 ```
 ```
 Capture an order for sarah.johnson@example.com with 1 TSH-002 and 2 COF-003 items
