@@ -112,9 +112,13 @@ export class ProductService extends BaseService {
   }
 
   /**
-   * Resolve SKU codes to product IDs via /api/catalog/listentries
+   * Resolve SKU codes to a Map of code → catalog product/variation ID
+   * via /api/catalog/listentries. Public so other services (e.g. OrderService)
+   * can resolve SKUs to productIds when creating orders.
    */
-  private async resolveSkusToIds(skus: string[]): Promise<string[]> {
+  async resolveSkuProductIdMap(skus: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+
     const criteria: ListEntrySearchCriteria = {
       keyword: `code:${skus.join(',')}`,
       catalogId: this.catalogId,
@@ -128,13 +132,25 @@ export class ProductService extends BaseService {
     );
 
     if (!response.success || !response.data) {
-      return [];
+      return map;
     }
 
     const entries = response.data.results ?? response.data.listEntries ?? [];
-    return entries
-      .filter((entry) => entry.id && entry.type?.toLowerCase() === 'product')
-      .map((entry) => entry.id!);
+    for (const entry of entries) {
+      if (entry.id && entry.code && entry.type?.toLowerCase() === 'product') {
+        map.set(entry.code, entry.id);
+      }
+    }
+
+    return map;
+  }
+
+  /**
+   * Resolve SKU codes to product IDs via /api/catalog/listentries
+   */
+  private async resolveSkusToIds(skus: string[]): Promise<string[]> {
+    const map = await this.resolveSkuProductIdMap(skus);
+    return Array.from(map.values());
   }
 
   async getProductVariants(

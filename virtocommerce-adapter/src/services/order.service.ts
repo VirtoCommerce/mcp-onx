@@ -22,10 +22,12 @@ import { CustomerService } from './customer.service.js';
 import { mapOrderFiltersToSearchCriteria } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
 import { ApiClient } from '../utils/api-client.js';
+import { ProductService } from './product.service.js';
 
 export class OrderService extends BaseService {
   private transformer: OrderTransformer;
   private customerService: CustomerService;
+  private productService?: ProductService;
   private workspace?: string;
 
   constructor(client: ApiClient, tenantId: string = 'default-workspace', workspace?: string) {
@@ -33,6 +35,10 @@ export class OrderService extends BaseService {
     this.workspace = workspace;
     this.transformer = new OrderTransformer(tenantId, workspace);
     this.customerService = new CustomerService(client, tenantId);
+  }
+
+  setProductService(productService: ProductService): void {
+    this.productService = productService;
   }
 
   setTenantId(tenantId: string): void {
@@ -51,7 +57,15 @@ export class OrderService extends BaseService {
 
   async createSalesOrder(input: CreateSalesOrderInput): Promise<OrderResult> {
     try {
-      const payload = this.transformer.fromCreateSalesOrderInput(input);
+      // Resolve SKUs to product IDs before building the payload
+      const skus = input.order?.lineItems?.map((li) => li.sku).filter(Boolean) as string[] ?? [];
+      const skuProductIdMap = skus.length && this.productService
+        ? await this.productService.resolveSkuProductIdMap(skus)
+        : new Map<string, string>();
+
+      console.error(`[OrderService] Resolved SKUs to productIds: ${JSON.stringify(Object.fromEntries(skuProductIdMap))}`);
+
+      const payload = this.transformer.fromCreateSalesOrderInput(input, skuProductIdMap);
       const response = await this.client.post<CustomerOrder>('/api/order/customerOrders', payload);
 
       if (!response.success || !response.data) {
@@ -224,4 +238,5 @@ export class OrderService extends BaseService {
       return this.failure<{ orders: Order[] }>(`Order lookup failed: ${getErrorMessage(error)}`, error);
     }
   }
+
 }

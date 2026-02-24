@@ -94,7 +94,10 @@ export class OrderTransformer extends BaseTransformer {
   /**
    * Transform CreateSalesOrderInput to API payload
    */
-  fromCreateSalesOrderInput(input: CreateSalesOrderInput): CustomerOrder {
+  fromCreateSalesOrderInput(
+    input: CreateSalesOrderInput,
+    skuProductIdMap?: Map<string, string>
+  ): CustomerOrder {
     const order = input.order;
     if (!order) {
       return {};
@@ -113,6 +116,7 @@ export class OrderTransformer extends BaseTransformer {
 
     const items: LineItem[] =
       order.lineItems?.map((item) => ({
+        productId: skuProductIdMap?.get(item.sku),
         sku: item.sku,
         name: item.name,
         quantity: item.quantity ?? 0,
@@ -204,7 +208,7 @@ export class OrderTransformer extends BaseTransformer {
     if (lineItems?.length) {
       updated.items = (updated.items ?? []).map((item) => {
         const patch = lineItems.find((li) => li.sku === item.sku);
-        if (!patch) return item;
+        if (!patch) { return item; }
         return {
           ...item,
           quantity: patch.quantity ?? item.quantity,

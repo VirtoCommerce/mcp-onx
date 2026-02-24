@@ -44,7 +44,11 @@
       "Bash(powershell.exe -Command \"Get-ChildItem ''E:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\vc-module-order\\\\src'' -Recurse -Filter ''*.cs'' | Select-Object -ExpandProperty FullName | Out-String\")",
       "Bash(powershell.exe -Command \"Get-ChildItem ''E:\\\\Develops\\\\VirtoWay\\\\projects\\\\tasks\\\\4464\\\\vc-module-order\\\\src'' -Recurse -Filter ''*.cs'' | Select-Object -First 50 -ExpandProperty FullName\")",
       "Bash(powershell.exe -Command:*)",
-      "mcp__plugin_serena_serena__insert_after_symbol"
+      "mcp__plugin_serena_serena__insert_after_symbol",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ]
   }
 }

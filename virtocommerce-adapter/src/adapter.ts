@@ -86,6 +86,9 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
     this.fulfillmentService = new FulfillmentService(this.client, tenantId, this.options.workspace);
     this.productService = new ProductService(this.client, tenantId);
     this.returnService = new ReturnService(this.client);
+
+    // Wire cross-service dependencies
+    this.orderService.setProductService(this.productService);
   }
 
   // Lifecycle methods
