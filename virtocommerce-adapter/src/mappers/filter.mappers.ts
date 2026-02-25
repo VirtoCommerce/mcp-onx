@@ -143,7 +143,7 @@ export function mapProductVariantFiltersToSearchCriteria(input: GetProductVarian
   const hasSkus = !!input.skus?.length;
 
   const criteria: ProductSearchCriteria = {
-    responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations',
+    responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations,WithPrices',
   };
 
   if (hasProductIds && !hasVariantIds && !hasSkus) {

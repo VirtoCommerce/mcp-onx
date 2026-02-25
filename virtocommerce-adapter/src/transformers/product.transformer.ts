@@ -3,7 +3,7 @@
  */
 
 import type { Product, ProductVariant, InventoryItem } from '@cof-org/mcp';
-import type { CatalogProduct, ProductProperty, InventoryInfo } from '../models/index.js';
+import type { CatalogProduct, ProductPrice, ProductProperty, InventoryInfo } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 
 export class ProductTransformer extends BaseTransformer {
@@ -63,6 +63,13 @@ export class ProductTransformer extends BaseTransformer {
     const weight = this.extractWeight(variation);
     const dimensions = this.extractDimensions(variation);
 
+    // Resolve prices: prefer variation's own prices, fall back to parent
+    const pricing = this.extractPricing(variation.prices ?? parentProduct?.prices);
+
+    // Resolve taxable: a non-empty taxType indicates the variant is taxable
+    const taxType = variation.taxType ?? parentProduct?.taxType;
+    const taxable = taxType ? true : undefined;
+
     return {
       id: variation.id ?? '',
       externalId: variation.outerId,
@@ -72,8 +79,10 @@ export class ProductTransformer extends BaseTransformer {
       barcode: variation.gtin,
       title: variation.name ?? parentProduct?.name ?? '',
       selectedOptions,
-      price: undefined,
-      currency: undefined,
+      price: pricing?.price,
+      currency: pricing?.currency,
+      compareAtPrice: pricing?.compareAtPrice,
+      taxable,
       inventoryNotTracked: variation.trackInventory === false ? true : undefined,
       weight,
       dimensions,
@@ -169,6 +178,40 @@ export class ProductTransformer extends BaseTransformer {
       height: product.height ?? 0,
       unit,
     };
+  }
+
+  /**
+   * Extract pricing from VirtoCommerce product prices array.
+   * Uses the first price entry with minQuantity <= 1 (or the very first entry).
+   * Maps: sale → price, list → compareAtPrice (only when sale is present).
+   */
+  private extractPricing(
+    prices?: ProductPrice[]
+  ): { price: number; currency: string; compareAtPrice?: number } | undefined {
+    if (!prices?.length) {
+      return undefined;
+    }
+
+    // Prefer the price entry applicable to single-unit purchases
+    const entry = prices.find((p) => (p.minQuantity ?? 0) <= 1) ?? prices[0];
+    if (!entry) {
+      return undefined;
+    }
+
+    const list = entry.list;
+    const sale = entry.sale;
+    const currency = entry.currency;
+
+    if (list == null || !currency) {
+      return undefined;
+    }
+
+    // When a sale price exists, it becomes the selling price and list is compare-at
+    if (sale != null && sale < list) {
+      return { price: sale, currency, compareAtPrice: list };
+    }
+
+    return { price: list, currency };
   }
 
   /**

@@ -58,6 +58,25 @@ export interface CatalogProduct extends AuditableEntity, HasOuterId {
   associations?: ProductAssociation[];
   links?: CategoryLink[];
   dynamicProperties?: DynamicObjectProperty[];
+
+  // Pricing (available when responseGroup includes 'WithPrices')
+  prices?: ProductPrice[];
+
+  // Tax
+  taxType?: string;
+}
+
+/**
+ * Product price entry from VirtoCommerce Pricing module.
+ * Returned when the `WithPrices` response group is requested.
+ */
+export interface ProductPrice {
+  productId?: string;
+  pricelistId?: string;
+  currency?: string;
+  list?: number;
+  sale?: number;
+  minQuantity?: number;
 }
 
 /**

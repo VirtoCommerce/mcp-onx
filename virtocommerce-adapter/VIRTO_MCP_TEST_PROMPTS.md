@@ -22,9 +22,9 @@ Copy and paste these prompts into Claude Desktop to test each MCP tool. The mock
 - **fa90d0b3-4bf5-4fc8-8c7c-787cafc4c678**: Alla Volkova (allagrvolkova@mail.ru)
 
 ### Available Products/SKUs
-- **47e4aaef9c9e4326924d4a4080f461a5** / 564698896: Wireless Bluetooth Headphones ($199.99)
-- **08c33cfc9f664426a52fac8882da2df0** / 566903892: Organic Cotton T-Shirt ($29.99)
-- **6ee23bd045a549d785d9abc7e2a61b02** / 552223579: Premium Coffee Beans ($24.99)
+- **47e4aaef9c9e4326924d4a4080f461a5** / 564698896: Brother MFC-L6700DW Wireless Monochrome All-in-One Laser Printer, Copy/Fax/Print/Scan, $539
+- **08c33cfc9f664426a52fac8882da2df0** / 566903892: Canon Imageclass WiFi MF232W Monochrome Laser Printer/Scanner/Copier, $189
+- **6ee23bd045a549d785d9abc7e2a61b02** / 552223579: HP LaserJet Pro MFP M127fn Multifunction Laser Printer, Copy/Fax/Print/Scan, $315
 
 ### Warehouse Locations
 - vendor-fulfillment
@@ -151,8 +151,9 @@ Find the customer who placed order CO220518-00001
 ```
 Create a new order for customer cb0a5340-f9fb-4f49-bd62-9d03518868ff with 2 units of 47e4aaef9c9e4326924d4a4080f461a5 shipping to 123 Main St, New York, NY 10001
 ```
+:white_check_mark: Passed - creates new order for b2b admin with specified products and shipping address
 ```
-Capture an order for sarah.johnson@example.com with 1 TSH-002 and 2 COF-003 items
+Capture an order for allagrvolkova@mail.ru with 1 566903892 and 2 552223579 items
 ```
 ```
 Place an order for customer cust_002 with product WID-001, quantity 1, shipping to 456 Oak Ave, Los Angeles, CA 90210
