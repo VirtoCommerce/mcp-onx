@@ -157,6 +157,12 @@ export class ProductService extends BaseService {
     input: GetProductVariantsInput
   ): Promise<FulfillmentToolResult<{ productVariants: ProductVariant[] }>> {
     try {
+      // When SKUs are provided, resolve them to IDs via listentries first
+      // (the indexed search endpoint does not support searching by SKU code)
+      if (input.skus?.length) {
+        return this.getProductVariantsBySkus(input.skus);
+      }
+
       const searchCriteria = mapProductVariantFiltersToSearchCriteria(input);
 
       // Filter by catalog when catalogId is configured
@@ -185,6 +191,45 @@ export class ProductService extends BaseService {
         error
       );
     }
+  }
+
+  /**
+   * Resolve variant SKUs to IDs via /api/catalog/listentries, then fetch
+   * the full product data so the transformer can extract variant details.
+   */
+  private async getProductVariantsBySkus(
+    skus: string[]
+  ): Promise<FulfillmentToolResult<{ productVariants: ProductVariant[] }>> {
+    // Step 1: Resolve SKUs to product/variation IDs via listentries
+    const resolvedIds = await this.resolveSkusToIds(skus);
+
+    if (!resolvedIds.length) {
+      return this.success<{ productVariants: ProductVariant[] }>({ productVariants: [] });
+    }
+
+    // Step 2: Fetch products by resolved IDs with searchInVariations=true
+    // so that variation-level IDs are also matched
+    const response = await this.client.post<ProductSearchResult>(
+      '/api/catalog/search/products',
+      {
+        objectIds: resolvedIds,
+        responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations',
+        searchInVariations: true,
+        catalogIds: this.catalogId ? [this.catalogId] : undefined,
+        take: resolvedIds.length,
+      }
+    );
+
+    if (!response.success) {
+      return this.failure<{ productVariants: ProductVariant[] }>(
+        'Failed to fetch product variants by SKUs',
+        response.error ?? response
+      );
+    }
+
+    const results = response.data?.items ?? [];
+    const productVariants = this.transformer.fromCatalogProductVariants(results);
+    return this.success<{ productVariants: ProductVariant[] }>({ productVariants });
   }
 
   async getInventory(

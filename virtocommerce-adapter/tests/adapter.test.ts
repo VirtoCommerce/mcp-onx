@@ -1127,11 +1127,22 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should get variants by SKUs', async () => {
-        postSpy.mockResolvedValue({
+        // Step 1: resolveSkuProductIdMap via /api/catalog/listentries
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            results: [
+              { id: 'VAR-001', code: 'BOLT-SM', type: 'Product' },
+            ],
+          },
+        });
+
+        // Step 2: fetch products via /api/catalog/search/products
+        postSpy.mockResolvedValueOnce({
           success: true,
           data: {
             totalCount: 1,
-            results: [
+            items: [
               {
                 id: 'VAR-001',
                 code: 'BOLT-SM',
@@ -1166,10 +1177,22 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.productVariants[0]?.productId).toBe('PROD-001');
         }
 
-        expect(postSpy).toHaveBeenCalledWith(
+        // First call should be to listentries for SKU resolution
+        expect(postSpy).toHaveBeenNthCalledWith(
+          1,
+          '/api/catalog/listentries',
+          expect.objectContaining({
+            keyword: 'code:BOLT-SM',
+            searchInVariations: true,
+          })
+        );
+
+        // Second call should be to search/products with resolved IDs
+        expect(postSpy).toHaveBeenNthCalledWith(
+          2,
           '/api/catalog/search/products',
           expect.objectContaining({
-            codes: ['BOLT-SM'],
+            objectIds: ['VAR-001'],
             searchInVariations: true,
           })
         );
@@ -1230,7 +1253,18 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should handle variant search failure', async () => {
-        postSpy.mockResolvedValue({
+        // Step 1: listentries resolves successfully
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            results: [
+              { id: 'VAR-001', code: 'BOLT-SM', type: 'Product' },
+            ],
+          },
+        });
+
+        // Step 2: search/products fails
+        postSpy.mockResolvedValueOnce({
           success: false,
           error: {
             code: 'API_ERROR',

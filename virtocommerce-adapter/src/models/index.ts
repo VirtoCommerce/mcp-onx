@@ -111,7 +111,6 @@ export type {
   EditorialReview,
   ProductAssociation,
   CategoryLink,
-  ProductPrice,
   ProductSearchCriteria,
   ProductSearchResult,
   ListEntrySearchCriteria,

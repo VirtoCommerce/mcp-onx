@@ -103,9 +103,8 @@ export function mapProductFiltersToSearchCriteria(input: GetProductsInput): Prod
     criteria.objectIds = input.ids;
   }
 
-  if (input.skus?.length) {
-    criteria.codes = input.skus;
-  }
+  // NOTE: SKU search is handled separately via getProductsByCodes() in ProductService.
+  // The indexed search endpoint does not support a `codes` / `skus` field.
 
   criteria.skip = input.skip ?? 0;
   criteria.take = input.pageSize ?? 20;
@@ -135,32 +134,28 @@ export function mapProductFilters(input: GetProductsInput): Record<string, unkno
  *
  * VirtoCommerce treats variations as nested objects under parent products.
  * - `productIds`: fetch parent products by ID, then extract their variations.
- * - `ids` / `skus`: search for specific variations directly.
+ * - `ids`: search for specific variations by their IDs directly.
+ *
+ * NOTE: `skus` are NOT handled here because the indexed search endpoint
+ * does not support searching by SKU code. SKU resolution must happen
+ * in the service layer via /api/catalog/listentries before calling this mapper.
  */
 export function mapProductVariantFiltersToSearchCriteria(input: GetProductVariantsInput): ProductSearchCriteria {
   const hasProductIds = !!input.productIds?.length;
   const hasVariantIds = !!input.ids?.length;
-  const hasSkus = !!input.skus?.length;
 
   const criteria: ProductSearchCriteria = {
-    responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations,WithPrices',
+    responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations',
   };
 
-  if (hasProductIds && !hasVariantIds && !hasSkus) {
+  if (hasProductIds && !hasVariantIds) {
     // Fetch parent products to extract their variations
     criteria.objectIds = input.productIds;
     criteria.searchInVariations = false;
-  } else {
-    // Search for specific variations by ID or SKU
+  } else if (hasVariantIds) {
+    // Search for specific variations by ID
+    criteria.objectIds = input.ids;
     criteria.searchInVariations = true;
-
-    if (hasVariantIds) {
-      criteria.objectIds = input.ids;
-    }
-
-    if (hasSkus) {
-      criteria.codes = input.skus;
-    }
   }
 
   criteria.skip = input.skip ?? 0;

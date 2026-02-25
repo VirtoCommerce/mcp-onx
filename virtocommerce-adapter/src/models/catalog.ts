@@ -59,24 +59,8 @@ export interface CatalogProduct extends AuditableEntity, HasOuterId {
   links?: CategoryLink[];
   dynamicProperties?: DynamicObjectProperty[];
 
-  // Pricing (available when responseGroup includes 'WithPrices')
-  prices?: ProductPrice[];
-
   // Tax
   taxType?: string;
-}
-
-/**
- * Product price entry from VirtoCommerce Pricing module.
- * Returned when the `WithPrices` response group is requested.
- */
-export interface ProductPrice {
-  productId?: string;
-  pricelistId?: string;
-  currency?: string;
-  list?: number;
-  sale?: number;
-  minQuantity?: number;
 }
 
 /**
@@ -193,28 +177,40 @@ export interface CategoryLink {
 }
 
 /**
- * Product search criteria
+ * Product indexed search criteria.
+ *
+ * Matches VirtoCommerce's ProductIndexedSearchCriteria which inherits from
+ * CatalogIndexedSearchCriteria → SearchCriteriaBase.
+ *
+ * Used by POST /api/catalog/search/products (Elastic Search).
+ * Note: `codes` / `skus` fields do NOT exist on the indexed search criteria;
+ * SKU resolution must happen via /api/catalog/listentries first.
  */
 export interface ProductSearchCriteria {
+  // SearchCriteriaBase
   responseGroup?: string;
   objectType?: string;
+  objectIds?: string[];
   keyword?: string;
   searchPhrase?: string;
   sort?: string;
   skip?: number;
   take?: number;
-  objectIds?: string[];
+
+  // CatalogIndexedSearchCriteria
+  storeId?: string;
+  catalogId?: string;
   catalogIds?: string[];
-  categoryIds?: string[];
-  codes?: string[];
-  skus?: string[];
-  productTypes?: string[];
-  vendorIds?: string[];
-  startDate?: string;
-  endDate?: string;
-  startDateRange?: string;
+  outline?: string;
+  outlines?: string[];
+  terms?: string[];
   searchInChildren?: boolean;
   searchInVariations?: boolean;
+
+  // ProductIndexedSearchCriteria
+  currency?: string;
+  pricelists?: string[];
+  withHidden?: boolean;
 }
 
 /**
