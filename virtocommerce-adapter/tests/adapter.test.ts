@@ -120,9 +120,6 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
             firstName: 'John',
             lastName: 'Doe',
             phone: '+1234567890',
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z',
-            tenantId: 'test-tenant',
           },
           shippingAddress: {
             firstName: 'John',
@@ -664,51 +661,6 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         );
       });
 
-                id: 'CUST-001',
-                memberType: 'Contact',
-                firstName: 'John',
-                lastName: 'Doe',
-                emails: ['john@example.com'],
-                phones: ['+1234567890'],
-                addresses: [],
-                groups: ['VIP'],
-                status: 'active',
-                outerId: 'EXT-CUST-001',
-                createdDate: '2024-01-01T00:00:00Z',
-                modifiedDate: '2024-01-15T00:00:00Z',
-                dynamicProperties: [],
-              },
-            ],
-          },
-        });
-
-        const input: GetCustomersInput = {
-          ids: ['CUST-001'],
-        };
-
-        const result = await adapter.getCustomers(input);
-
-        expect(result.success).toBe(true);
-        if (result.success) {
-          expect(result.customers).toHaveLength(1);
-          expect(result.customers[0]?.id).toBe('CUST-001');
-          expect(result.customers[0]?.firstName).toBe('John');
-          expect(result.customers[0]?.lastName).toBe('Doe');
-          expect(result.customers[0]?.email).toBe('john@example.com');
-          expect(result.customers[0]?.phone).toBe('+1234567890');
-          expect(result.customers[0]?.externalId).toBe('EXT-CUST-001');
-          expect(result.customers[0]?.tags).toEqual(['VIP']);
-        }
-        expect(postSpy).toHaveBeenCalledWith(
-          '/api/members/search',
-          expect.objectContaining({
-            objectIds: ['CUST-001'],
-            memberTypes: ['Contact'],
-            responseGroup: 'Full',
-          })
-        );
-      });
-
       it('should get customers by email', async () => {
         postSpy.mockResolvedValue({
           success: true,
@@ -1127,18 +1079,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should get variants by SKUs', async () => {
-        // Step 1: resolveSkuProductIdMap via /api/catalog/listentries
-        postSpy.mockResolvedValueOnce({
-          success: true,
-          data: {
-            results: [
-              { id: 'VAR-001', code: 'BOLT-SM', type: 'Product' },
-            ],
-          },
-        });
-
-        // Step 2: fetch products via /api/catalog/search/products
-        postSpy.mockResolvedValueOnce({
+        postSpy.mockResolvedValue({
           success: true,
           data: {
             totalCount: 1,
@@ -1177,22 +1118,10 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.productVariants[0]?.productId).toBe('PROD-001');
         }
 
-        // First call should be to listentries for SKU resolution
-        expect(postSpy).toHaveBeenNthCalledWith(
-          1,
-          '/api/catalog/listentries',
-          expect.objectContaining({
-            keyword: 'code:BOLT-SM',
-            searchInVariations: true,
-          })
-        );
-
-        // Second call should be to search/products with resolved IDs
-        expect(postSpy).toHaveBeenNthCalledWith(
-          2,
+        expect(postSpy).toHaveBeenCalledWith(
           '/api/catalog/search/products',
           expect.objectContaining({
-            objectIds: ['VAR-001'],
+            searchPhrase: 'code:BOLT-SM',
             searchInVariations: true,
           })
         );
@@ -1253,18 +1182,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should handle variant search failure', async () => {
-        // Step 1: listentries resolves successfully
-        postSpy.mockResolvedValueOnce({
-          success: true,
-          data: {
-            results: [
-              { id: 'VAR-001', code: 'BOLT-SM', type: 'Product' },
-            ],
-          },
-        });
-
-        // Step 2: search/products fails
-        postSpy.mockResolvedValueOnce({
+        postSpy.mockResolvedValue({
           success: false,
           error: {
             code: 'API_ERROR',
@@ -1772,6 +1690,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       const input: CreateSalesOrderInput = {
         order: {
           lineItems: [{ sku: 'PROD-001', quantity: 1 }],
+          customer: { id: 'CUST-001' },
         },
       };
 

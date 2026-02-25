@@ -103,8 +103,10 @@ export function mapProductFiltersToSearchCriteria(input: GetProductsInput): Prod
     criteria.objectIds = input.ids;
   }
 
-  // NOTE: SKU search is handled separately via getProductsByCodes() in ProductService.
-  // The indexed search endpoint does not support a `codes` / `skus` field.
+  if (input.skus?.length) {
+    criteria.searchPhrase = `code:${input.skus!.join(',')}`;
+    criteria.searchInVariations = true;
+  }
 
   criteria.skip = input.skip ?? 0;
   criteria.take = input.pageSize ?? 20;
@@ -135,26 +137,28 @@ export function mapProductFilters(input: GetProductsInput): Record<string, unkno
  * VirtoCommerce treats variations as nested objects under parent products.
  * - `productIds`: fetch parent products by ID, then extract their variations.
  * - `ids`: search for specific variations by their IDs directly.
- *
- * NOTE: `skus` are NOT handled here because the indexed search endpoint
- * does not support searching by SKU code. SKU resolution must happen
- * in the service layer via /api/catalog/listentries before calling this mapper.
+ * - `skus`: search via `searchPhrase` in `code:<sku1>,<sku2>` format.
  */
 export function mapProductVariantFiltersToSearchCriteria(input: GetProductVariantsInput): ProductSearchCriteria {
   const hasProductIds = !!input.productIds?.length;
   const hasVariantIds = !!input.ids?.length;
+  const hasSkus = !!input.skus?.length;
 
   const criteria: ProductSearchCriteria = {
     responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations',
   };
 
-  if (hasProductIds && !hasVariantIds) {
+  if (hasProductIds && !hasVariantIds && !hasSkus) {
     // Fetch parent products to extract their variations
     criteria.objectIds = input.productIds;
     criteria.searchInVariations = false;
   } else if (hasVariantIds) {
     // Search for specific variations by ID
     criteria.objectIds = input.ids;
+    criteria.searchInVariations = true;
+  } else if (hasSkus) {
+    // Search variations by SKU code via searchPhrase
+    criteria.searchPhrase = `code:${input.skus!.join(',')}`;
     criteria.searchInVariations = true;
   }
 

@@ -57,15 +57,23 @@ export class OrderService extends BaseService {
 
   async createSalesOrder(input: CreateSalesOrderInput): Promise<OrderResult> {
     try {
-      // Resolve SKUs to product IDs before building the payload
+      // VirtoCommerce requires customer identification on orders
+      const customer = input.order?.customer;
+      if (!customer?.id && !customer?.externalId) {
+        return this.failure<{ order: Order }>(
+          'Customer identification is required to create an order. Provide customer.id or customer.externalId in order.customer.'
+        );
+      }
+
+      // Resolve SKUs to product info (id + name) before building the payload
       const skus = input.order?.lineItems?.map((li) => li.sku).filter(Boolean) as string[] ?? [];
-      const skuProductIdMap = skus.length && this.productService
-        ? await this.productService.resolveSkuProductIdMap(skus)
-        : new Map<string, string>();
+      const skuProductMap = skus.length && this.productService
+        ? await this.productService.resolveSkuProductMap(skus)
+        : new Map<string, { id: string; name: string }>();
 
-      console.error(`[OrderService] Resolved SKUs to productIds: ${JSON.stringify(Object.fromEntries(skuProductIdMap))}`);
+      console.error(`[OrderService] Resolved SKUs to products: ${JSON.stringify(Object.fromEntries(skuProductMap))}`);
 
-      const payload = this.transformer.fromCreateSalesOrderInput(input, skuProductIdMap);
+      const payload = this.transformer.fromCreateSalesOrderInput(input, skuProductMap);
       const response = await this.client.post<CustomerOrder>('/api/order/customerOrders', payload);
 
       if (!response.success || !response.data) {

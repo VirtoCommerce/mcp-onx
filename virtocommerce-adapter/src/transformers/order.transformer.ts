@@ -96,7 +96,7 @@ export class OrderTransformer extends BaseTransformer {
    */
   fromCreateSalesOrderInput(
     input: CreateSalesOrderInput,
-    skuProductIdMap?: Map<string, string>
+    skuProductMap?: Map<string, { id: string; name: string }>
   ): CustomerOrder {
     const order = input.order;
     if (!order) {
@@ -115,16 +115,19 @@ export class OrderTransformer extends BaseTransformer {
     ].filter((a): a is NonNullable<typeof a> => a !== undefined);
 
     const items: LineItem[] =
-      order.lineItems?.map((item) => ({
-        productId: skuProductIdMap?.get(item.sku),
-        sku: item.sku,
-        name: item.name,
-        quantity: item.quantity ?? 0,
-        price: item.unitPrice ?? 0,
-        placedPrice: item.unitPrice ?? 0,
-        currency,
-        catalogId: this.catalogId,
-      })) ?? [];
+      order.lineItems?.map((item) => {
+        const resolved = skuProductMap?.get(item.sku);
+        return {
+          productId: resolved?.id,
+          sku: item.sku,
+          name: item.name ?? resolved?.name ?? item.sku,
+          quantity: item.quantity ?? 0,
+          price: item.unitPrice ?? 0,
+          placedPrice: item.unitPrice ?? 0,
+          currency,
+          catalogId: this.catalogId,
+        };
+      }) ?? [];
 
     const shipments: Shipment[] = order.shippingAddress
       ? [

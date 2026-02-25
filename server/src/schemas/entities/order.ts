@@ -21,7 +21,8 @@ const OrderCoreSchema = z
     billingAddress: AddressSchema.describe('Billing address'),
     currency: z.string().describe('Order currency code'),
     customFields: CustomFieldsSchema,
-    customer: CustomerSchema.describe('Order customer information'),
+    customer: CustomerSchema.omit(makeZodFieldMap(['createdAt', 'updatedAt', 'tenantId'] as const))
+      .describe('Customer reference for the order'),
     discounts: z.array(z.looseObject({})).describe('Discounts'),
     lineItems: z.array(OrderLineItemSchema),
     orderDiscount: z.number().describe('Order Discount'),

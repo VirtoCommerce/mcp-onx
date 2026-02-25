@@ -15,8 +15,6 @@ import type {
   ProductSearchResult,
   InventorySearchResult,
   InventorySearchCriteria,
-  ListEntrySearchResult,
-  ListEntrySearchCriteria,
 } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { ProductTransformer } from '../transformers/product.transformer.js';
@@ -46,11 +44,6 @@ export class ProductService extends BaseService {
 
   async getProducts(input: GetProductsInput): Promise<FulfillmentToolResult<{ products: Product[] }>> {
     try {
-      // Use products-by-codes endpoint for SKU search when catalogId is available
-      if (input.skus?.length && this.catalogId) {
-        return this.getProductsByCodes(input.skus);
-      }
-
       const searchCriteria = mapProductFiltersToSearchCriteria(input);
 
       // Filter by catalog when catalogId is configured
@@ -81,64 +74,33 @@ export class ProductService extends BaseService {
     }
   }
 
-  private async getProductsByCodes(skus: string[]): Promise<FulfillmentToolResult<{ products: Product[] }>> {
-    // Step 1: Resolve SKUs to product IDs via listentries
-    const productIds = await this.resolveSkusToIds(skus);
+  /**
+   * Resolve SKU codes to a Map of code → { id, name } from the catalog
+   * via /api/catalog/search/products with searchPhrase and responseGroup=None.
+   * Public so other services (e.g. OrderService) can resolve SKUs to product info.
+   */
+  async resolveSkuProductMap(skus: string[]): Promise<Map<string, { id: string; name: string }>> {
+    const map = new Map<string, { id: string; name: string }>();
 
-    if (!productIds.length) {
-      return this.success<{ products: Product[] }>({ products: [] });
-    }
-
-    // Step 2: Fetch full products by IDs
     const response = await this.client.post<ProductSearchResult>(
       '/api/catalog/search/products',
       {
-        objectIds: productIds,
-        responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Links,Variations,Seo',
-        take: productIds.length,
+        searchPhrase: `code:${skus.join(',')}`,
+        responseGroup: 'None',
+        searchInVariations: true,
+        catalogIds: this.catalogId ? [this.catalogId] : undefined,
+        take: skus.length,
       }
-    );
-
-    if (!response.success) {
-      return this.failure<{ products: Product[] }>(
-        'Failed to fetch products by codes',
-        response.error ?? response
-      );
-    }
-
-    const results = response.data?.items ?? [];
-    const products = this.transformer.fromCatalogProducts(results);
-    return this.success<{ products: Product[] }>({ products });
-  }
-
-  /**
-   * Resolve SKU codes to a Map of code → catalog product/variation ID
-   * via /api/catalog/listentries. Public so other services (e.g. OrderService)
-   * can resolve SKUs to productIds when creating orders.
-   */
-  async resolveSkuProductIdMap(skus: string[]): Promise<Map<string, string>> {
-    const map = new Map<string, string>();
-
-    const criteria: ListEntrySearchCriteria = {
-      keyword: `code:${skus.join(',')}`,
-      catalogId: this.catalogId,
-      searchInVariations: true,
-      take: skus.length,
-    };
-
-    const response = await this.client.post<ListEntrySearchResult>(
-      '/api/catalog/listentries',
-      criteria
     );
 
     if (!response.success || !response.data) {
       return map;
     }
 
-    const entries = response.data.results ?? response.data.listEntries ?? [];
-    for (const entry of entries) {
-      if (entry.id && entry.code && entry.type?.toLowerCase() === 'product') {
-        map.set(entry.code, entry.id);
+    const items = response.data.items ?? [];
+    for (const item of items) {
+      if (item.id && item.code) {
+        map.set(item.code, { id: item.id, name: item.name ?? '' });
       }
     }
 
@@ -146,23 +108,17 @@ export class ProductService extends BaseService {
   }
 
   /**
-   * Resolve SKU codes to product IDs via /api/catalog/listentries
+   * Resolve SKU codes to product IDs via /api/catalog/search/products
    */
   private async resolveSkusToIds(skus: string[]): Promise<string[]> {
-    const map = await this.resolveSkuProductIdMap(skus);
-    return Array.from(map.values());
+    const map = await this.resolveSkuProductMap(skus);
+    return Array.from(map.values()).map((v) => v.id);
   }
 
   async getProductVariants(
     input: GetProductVariantsInput
   ): Promise<FulfillmentToolResult<{ productVariants: ProductVariant[] }>> {
     try {
-      // When SKUs are provided, resolve them to IDs via listentries first
-      // (the indexed search endpoint does not support searching by SKU code)
-      if (input.skus?.length) {
-        return this.getProductVariantsBySkus(input.skus);
-      }
-
       const searchCriteria = mapProductVariantFiltersToSearchCriteria(input);
 
       // Filter by catalog when catalogId is configured
@@ -193,53 +149,12 @@ export class ProductService extends BaseService {
     }
   }
 
-  /**
-   * Resolve variant SKUs to IDs via /api/catalog/listentries, then fetch
-   * the full product data so the transformer can extract variant details.
-   */
-  private async getProductVariantsBySkus(
-    skus: string[]
-  ): Promise<FulfillmentToolResult<{ productVariants: ProductVariant[] }>> {
-    // Step 1: Resolve SKUs to product/variation IDs via listentries
-    const resolvedIds = await this.resolveSkusToIds(skus);
-
-    if (!resolvedIds.length) {
-      return this.success<{ productVariants: ProductVariant[] }>({ productVariants: [] });
-    }
-
-    // Step 2: Fetch products by resolved IDs with searchInVariations=true
-    // so that variation-level IDs are also matched
-    const response = await this.client.post<ProductSearchResult>(
-      '/api/catalog/search/products',
-      {
-        objectIds: resolvedIds,
-        responseGroup: 'ItemInfo,ItemAssets,ItemProperties,Variations',
-        searchInVariations: true,
-        catalogIds: this.catalogId ? [this.catalogId] : undefined,
-        take: resolvedIds.length,
-      }
-    );
-
-    if (!response.success) {
-      return this.failure<{ productVariants: ProductVariant[] }>(
-        'Failed to fetch product variants by SKUs',
-        response.error ?? response
-      );
-    }
-
-    const results = response.data?.items ?? [];
-    const productVariants = this.transformer.fromCatalogProductVariants(results);
-    return this.success<{ productVariants: ProductVariant[] }>({ productVariants });
-  }
-
   async getInventory(
     input: GetInventoryInput
   ): Promise<FulfillmentToolResult<{ inventory: InventoryItem[] }>> {
     try {
-      // Step 1: Resolve SKUs to product IDs via listentries, then fetch product details
-      const resolvedIds = this.catalogId
-        ? await this.resolveSkusToIds(input.skus)
-        : [];
+      // Step 1: Resolve SKUs to product IDs via search/products
+      const resolvedIds = await this.resolveSkusToIds(input.skus);
 
       if (!resolvedIds.length) {
         return this.success<{ inventory: InventoryItem[] }>({ inventory: [] });
