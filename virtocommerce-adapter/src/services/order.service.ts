@@ -65,6 +65,19 @@ export class OrderService extends BaseService {
         );
       }
 
+      // Enrich customer data from VirtoCommerce if only ID was provided
+      const customerId = customer.id ?? customer.externalId;
+      if (customerId && this.customerService) {
+        const contact = await this.customerService.getCustomerById(customerId);
+        if (contact) {
+          const enriched = input.order!.customer!;
+          enriched.firstName = enriched.firstName || contact.firstName;
+          enriched.lastName = enriched.lastName || contact.lastName;
+          enriched.email = enriched.email || contact.emails?.[0];
+          enriched.phone = enriched.phone || contact.phones?.[0];
+        }
+      }
+
       // Resolve SKUs to product info (id + name) before building the payload
       const skus = input.order?.lineItems?.map((li) => li.sku).filter(Boolean) as string[] ?? [];
       const skuProductMap = skus.length && this.productService
