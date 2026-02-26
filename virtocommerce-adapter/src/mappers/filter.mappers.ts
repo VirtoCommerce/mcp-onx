@@ -12,7 +12,7 @@ import type {
   GetFulfillmentsInput,
   GetReturnsInput,
 } from '@cof-org/mcp';
-import type { CustomerOrderSearchCriteria, MemberSearchCriteria, ProductSearchCriteria, ShipmentSearchCriteria } from '../models/index.js';
+import type { CustomerOrderSearchCriteria, MemberSearchCriteria, ProductSearchCriteria, ShipmentSearchCriteria, ReturnSearchCriteria } from '../models/index.js';
 
 /**
  * Map GetOrdersInput to VirtoCommerce CustomerOrderSearchCriteria
@@ -275,7 +275,51 @@ export function mapFulfillmentFilters(input: GetFulfillmentsInput): Record<strin
 }
 
 /**
- * Map GetReturnsInput to API query parameters
+ * Map GetReturnsInput to VirtoCommerce ReturnSearchCriteria
+ *
+ * VC Return search supports: objectIds, orderId (single string), keyword.
+ * Filters not supported server-side (statuses, outcomes, returnNumbers exact match,
+ * temporal filters) must be applied client-side after fetching.
+ */
+export function mapReturnFiltersToSearchCriteria(input: GetReturnsInput): ReturnSearchCriteria {
+  const criteria: ReturnSearchCriteria = {};
+
+  if (input.ids?.length) {
+    criteria.objectIds = input.ids;
+  }
+
+  // VC supports single orderId, not an array
+  if (input.orderIds?.length) {
+    criteria.orderId = input.orderIds[0];
+  }
+
+  // Use returnNumber as keyword (partial match); exact filtering is done client-side
+  if (input.returnNumbers?.length) {
+    criteria.keyword = input.returnNumbers[0];
+  }
+
+  // Determine whether client-side post-filtering will be needed
+  const needsPostFilter = !!(
+    input.statuses?.length ||
+    input.outcomes?.length ||
+    (input.returnNumbers && input.returnNumbers.length > 1) ||
+    input.createdAtMin ||
+    input.createdAtMax ||
+    input.updatedAtMin ||
+    input.updatedAtMax
+  );
+
+  const pageSize = input.pageSize ?? 20;
+  criteria.skip = input.skip ?? 0;
+  // Inflate take when post-filtering is needed to ensure enough results
+  criteria.take = needsPostFilter ? Math.max(pageSize, 100) : pageSize;
+
+  return criteria;
+}
+
+/**
+ * @deprecated Use mapReturnFiltersToSearchCriteria instead
+ * Map GetReturnsInput to generic API query parameters (legacy)
  */
 export function mapReturnFilters(input: GetReturnsInput): Record<string, unknown> {
   return {

@@ -127,6 +127,14 @@ export type {
   ProductInventoryInfo,
 } from './inventory.js';
 
+// Return models
+export type {
+  VcReturn,
+  VcReturnLineItem,
+  ReturnSearchCriteria,
+  ReturnSearchResult,
+} from './return.js';
+
 // Search models
 export type {
   SearchCriteriaBase,

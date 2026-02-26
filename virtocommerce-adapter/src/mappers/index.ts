@@ -12,4 +12,5 @@ export {
   mapCustomerFilters,
   mapFulfillmentFilters,
   mapReturnFilters,
+  mapReturnFiltersToSearchCriteria,
 } from './filter.mappers.js';

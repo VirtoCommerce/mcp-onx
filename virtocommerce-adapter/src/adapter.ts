@@ -85,7 +85,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
     this.customerService = new CustomerService(this.client, tenantId);
     this.fulfillmentService = new FulfillmentService(this.client, tenantId, this.options.workspace);
     this.productService = new ProductService(this.client, tenantId);
-    this.returnService = new ReturnService(this.client);
+    this.returnService = new ReturnService(this.client, tenantId);
 
     // Wire cross-service dependencies
     this.orderService.setProductService(this.productService);
@@ -276,6 +276,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
     this.customerService.setTenantId(tenantId);
     this.fulfillmentService.setTenantId(tenantId);
     this.productService.setTenantId(tenantId);
+    this.returnService.setTenantId(tenantId);
 
     if (options.workspace) {
       this.orderService.setWorkspace(options.workspace);
