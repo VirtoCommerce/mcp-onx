@@ -2,7 +2,7 @@
  * Customer transformation utilities
  */
 
-import type { Customer } from '@virtocommerce/cof-mcp';
+import type { Customer } from '@cof-org/mcp';
 import type { YourFulfillmentCustomer } from '../types.js';
 import type { CustomerOrder, Contact, Address } from '../models/index.js';
 import { BaseTransformer } from './base.js';

@@ -47,6 +47,6 @@
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "@virtocommerce/cof-mcp": "file:../server"
+    "@cof-org/mcp": "file:../server"
   }
 }

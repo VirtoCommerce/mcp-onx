@@ -6,7 +6,6 @@
 import * as winston from 'winston';
 import * as path from 'path';
 import * as fs from 'fs';
-import { fileURLToPath } from 'url';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import { LogSanitizer } from '../security/log-sanitizer.js';
 
@@ -43,9 +42,9 @@ export class StructuredLogger {
     // Make log directory absolute if it's relative
     if (!path.isAbsolute(logDir)) {
       // Find the server directory (parent of dist when running compiled code)
-      const currentDir = path.dirname(fileURLToPath(import.meta.url));
-      const serverDir = currentDir.includes(`${path.sep}dist${path.sep}`)
-        ? currentDir.split(`${path.sep}dist${path.sep}`)[0]
+      const currentDir = path.dirname(new URL(import.meta.url).pathname);
+      const serverDir = currentDir.includes('/dist/')
+        ? path.resolve(currentDir.split('/dist/')[0])
         : path.resolve(process.cwd(), 'server');
       logDir = path.join(serverDir, logDir);
     }

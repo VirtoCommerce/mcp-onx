@@ -54,7 +54,7 @@
     "typescript-eslint": "^8.7.0"
   },
   "dependencies": {
-    "@virtocommerce/cof-mcp": "^1.0.0",
+    "@cof-org/mcp": "^0.5.1",
     "axios": "^1.6.0"
   }
 }

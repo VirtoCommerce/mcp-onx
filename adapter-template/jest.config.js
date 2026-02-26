@@ -34,7 +34,7 @@ export default {
   },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
-    '^@virtocommerce/cof-mcp$': '<rootDir>/node_modules/@virtocommerce/cof-mcp/dist/index.js',
+    '^@cof-org/mcp$': '<rootDir>/node_modules/@cof-org/mcp/dist/index.js',
     '^(\\.{1,2}/.*)\\.js$': '$1'
   },
   moduleDirectories: ['node_modules'],

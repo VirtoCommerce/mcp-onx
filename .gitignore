@@ -38,7 +38,3 @@ working-docs/
 .idea/
 *.sublime-workspace
 *.sublime-project
-
-# AI tools
-.claude/
-.serena/

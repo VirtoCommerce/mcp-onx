@@ -10,7 +10,7 @@ import type {
   CancelOrderInput,
   UpdateOrderInput,
   GetOrdersInput,
-} from '@virtocommerce/cof-mcp';
+} from '@cof-org/mcp';
 import type {
   CustomerOrder,
   CustomerOrderSearchResult,

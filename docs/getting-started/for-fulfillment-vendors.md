@@ -16,7 +16,7 @@ Update `package.json`, rename the adapter class, and configure the connection op
 
 ## 2. Implement Required Methods
 
-The `IFulfillmentAdapter` interface (exported from `@virtocommerce/cof-mcp`) defines:
+The `IFulfillmentAdapter` interface (exported from `@cof-org/mcp`) defines:
 
 - Lifecycle: `connect`, `disconnect`, `healthCheck`
 - Action operations: `createSalesOrder`, `cancelOrder`, `updateOrder`, `fulfillOrder`

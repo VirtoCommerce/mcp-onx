@@ -2,7 +2,7 @@
 
 ## YourFulfillment Adapter Reference
 
-This document describes how the template adapter maps to the interfaces exposed by `@virtocommerce/cof-mcp`.
+This document describes how the template adapter maps to the interfaces exposed by `@cof-org/mcp`.
 
 ## Initialization
 
@@ -51,7 +51,7 @@ Each method should translate between platform types and your API’s payloads, t
 | `getInventory(input: GetInventoryInput)` | Reports stock levels. |
 | `getFulfillments(input: GetFulfillmentsInput)` | Lists fulfillment records. |
 
-All responses use the `FulfillmentToolResult<T>` union declared in `@virtocommerce/cof-mcp`. On failure, include adapter specific error metadata so downstream tools can diagnose issues.
+All responses use the `FulfillmentToolResult<T>` union declared in `@cof-org/mcp`. On failure, include adapter specific error metadata so downstream tools can diagnose issues.
 
 ## Error Handling
 
@@ -67,7 +67,7 @@ if (!response.success) {
 
 ## Type Definitions
 
-Reference `@virtocommerce/cof-mcp` for shared fulfillment models and `src/types.ts` for YourFulfillment-specific shapes. Maintaining strict typing in adapters ensures the server’s JSON Schema validation continues to succeed.
+Reference `@cof-org/mcp` for shared fulfillment models and `src/types.ts` for YourFulfillment-specific shapes. Maintaining strict typing in adapters ensures the server’s JSON Schema validation continues to succeed.
 
 ## Best Practices
 

@@ -32,8 +32,8 @@ import type {
   GetCustomersInput,
   GetFulfillmentsInput,
   GetReturnsInput,
-} from '@virtocommerce/cof-mcp';
-import { AdapterError } from '@virtocommerce/cof-mcp';
+} from '@cof-org/mcp';
+import { AdapterError } from '@cof-org/mcp';
 import { ApiClient } from './utils/api-client.js';
 import type { AdapterOptions } from './types.js';
 import { ErrorCode } from './types.js';

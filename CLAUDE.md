@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Commerce Operations Foundation (COF) MCP Reference Server — a monorepo implementing the Order Network eXchange (onX) standard for AI-powered fulfillment operations via the Model Context Protocol.
 
 ```
-/server                  - Core MCP server (@virtocommerce/cof-mcp) — Vitest
+/server                  - Core MCP server (@cof-org/mcp) — Vitest
 /virtocommerce-adapter   - VirtoCommerce fulfillment adapter (@virtocommerce/mcp-onx) — Jest
 /adapter-template        - Boilerplate for creating new adapters
 /schemas                 - JSON Schema definitions for domain models
@@ -45,7 +45,7 @@ npm test                   # Jest with --experimental-vm-modules
 npm run test:integration   # Build + test-integration.js
 ```
 
-**Build order matters**: The adapter depends on the server via `"@virtocommerce/cof-mcp": "file:../server"` — always build the server first.
+**Build order matters**: The adapter depends on the server via `"@cof-org/mcp": "file:../server"` — always build the server first.
 
 ### CI (GitHub Actions)
 

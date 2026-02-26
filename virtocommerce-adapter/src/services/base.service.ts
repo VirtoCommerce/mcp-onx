@@ -2,8 +2,8 @@
  * Base service with shared utilities for all domain services
  */
 
-import type { FulfillmentToolResult } from '@virtocommerce/cof-mcp';
-import { AdapterError } from '@virtocommerce/cof-mcp';
+import type { FulfillmentToolResult } from '@cof-org/mcp';
+import { AdapterError } from '@cof-org/mcp';
 import { ErrorCode } from '../types.js';
 import { ApiClient } from '../utils/api-client.js';
 

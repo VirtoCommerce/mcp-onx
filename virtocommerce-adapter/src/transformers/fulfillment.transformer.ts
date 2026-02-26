@@ -2,7 +2,7 @@
  * Fulfillment/Shipment transformation utilities
  */
 
-import type { Fulfillment, FulfillOrderInput } from '@virtocommerce/cof-mcp';
+import type { Fulfillment, FulfillOrderInput } from '@cof-org/mcp';
 import type { Shipment, ShipmentItem, LineItem } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';

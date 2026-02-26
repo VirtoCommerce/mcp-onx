@@ -227,7 +227,7 @@ Location:
 2. Extend `BaseTool<TInput, TOutput>`
 3. Define `name`, `description`, `inputSchema`
 4. Implement `execute(input: TInput): Promise<TOutput>`
-5. Add `registry.register(new YourTool(serviceLayer))` to `registerTools()` in `tools/index.ts`
+5. Registry auto-discovers and registers it
 
 ### Adding a Service Operation
 1. Add method to appropriate service class

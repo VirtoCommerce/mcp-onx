@@ -1,5 +1,5 @@
 {
-  "name": "@virtocommerce/cof-mcp",
+  "name": "@cof-org/mcp",
   "version": "1.0.0",
   "description": "Commerce Operations Foundation MCP Server",
   "type": "module",

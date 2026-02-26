@@ -52,7 +52,11 @@
       "Bash(head:*)",
       "Bash(cd \"e:/Develops/VirtoWay/projects/tasks/4464/mcp-reference-server/server\" && npm run test:unit 2>&1)",
       "Bash(sed:*)",
-      "Bash(npm:*)"
+      "Bash(npm:*)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(mkdir:*)"
     ]
   }
 }

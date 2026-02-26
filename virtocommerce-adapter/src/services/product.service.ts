@@ -10,7 +10,7 @@ import type {
   GetProductsInput,
   GetProductVariantsInput,
   GetInventoryInput,
-} from '@virtocommerce/cof-mcp';
+} from '@cof-org/mcp';
 import type {
   ProductSearchResult,
   InventorySearchResult,

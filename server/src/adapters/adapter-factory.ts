@@ -4,7 +4,6 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { pathToFileURL } from 'url';
 import { IFulfillmentAdapter, AdapterConfig, AdapterConstructor, AdapterError } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { MockAdapter } from './mock/mock-adapter.js';
@@ -178,8 +177,8 @@ export class AdapterFactory {
     Logger.info(`Loading local adapter from: ${adapterPath}`);
 
     try {
-      // Dynamically import local file (use file:// URL for Windows compatibility)
-      const module = await import(pathToFileURL(adapterPath).href);
+      // Dynamically import local file
+      const module = await import(adapterPath);
       const exportName = config.exportName || 'default';
       const AdapterClass = module[exportName];
 
