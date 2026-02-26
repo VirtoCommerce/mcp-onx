@@ -11,7 +11,7 @@ import type {
   GetCustomersInput,
   GetFulfillmentsInput,
   GetReturnsInput,
-} from '@cof-org/mcp';
+} from '@virtocommerce/cof-mcp';
 import type { CustomerOrderSearchCriteria, MemberSearchCriteria, ProductSearchCriteria, ShipmentSearchCriteria, ReturnSearchCriteria } from '../models/index.js';
 
 /**

@@ -1,7 +1,7 @@
 {
-  "name": "@cof-org/mcp",
-  "version": "1.0.0",
-  "description": "Commerce Operations Foundation MCP Server",
+  "name": "@virtocommerce/cof-mcp",
+  "version": "0.5.2-alpha.0",
+  "description": "Commerce Operations Foundation MCP Server (Windows-compatible fork)",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -81,6 +81,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/cof-org/mcp.git"
+    "url": "https://github.com/VirtoCommerce/mcp-onx.git"
   }
 }

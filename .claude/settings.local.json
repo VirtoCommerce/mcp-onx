@@ -56,7 +56,10 @@
       "WebSearch",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:github.com)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(xargs grep:*)",
+      "Bash(npm run:*)",
+      "Bash(rm:*)"
     ]
   }
 }

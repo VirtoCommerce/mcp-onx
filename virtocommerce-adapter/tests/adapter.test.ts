@@ -19,7 +19,7 @@ import type {
   GetProductsInput,
   GetProductVariantsInput,
   GetFulfillmentsInput,
-} from '@cof-org/mcp';
+} from '@virtocommerce/cof-mcp';
 
 function readResponse(path: string) {
   return readFileSync(new URL(`./fixtures/${path}.json`, import.meta.url), 'utf-8');
