@@ -155,20 +155,28 @@ Create a new order for customer cb0a5340-f9fb-4f49-bd62-9d03518868ff with 2 unit
 ```
 Capture an order for allagrvolkova@mail.ru with 1 566903892 and 2 552223579 items
 ```
+:white_check_mark: Passed - creates new order for Alla Volkova with specified products
 ```
-Place an order for customer cust_002 with product WID-001, quantity 1, shipping to 456 Oak Ave, Los Angeles, CA 90210
+Place an order for customer b2b admin with product 08c33cfc9f664426a52fac8882da2df0, quantity 1, shipping to 456 Oak Ave, Los Angeles, CA 90210
 ```
+:white_check_mark: Passed - creates new order for b2b admin with specified product and shipping address
+
 
 ### 8. Cancel Order Tool
 ```
-Cancel order order_001 due to customer request
+Cancel order ORDER-NY-001 due to customer request
 ```
+:white_check_mark: Passed - cancels order ORDER-NY-001
+
 ```
-Please cancel order EXT-001 - the customer changed their mind
+Please cancel order TEST-ORDER-007 - the customer changed their mind
 ```
+:white_check_mark: Passed - cancels order TEST-ORDER-007
+
 ```
-Cancel order ORD-1001 because of inventory issues
+Cancel order 8676953f-8728-4719-9c0f-d243422da361 because of inventory issues
 ```
+:white_check_mark: Passed - cancels order 8676953f-8728-4719-9c0f-d243422da361
 
 ### 9. Update Order Tool
 ```
