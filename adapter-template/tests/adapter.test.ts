@@ -14,7 +14,7 @@ import type {
   UpdateOrderInput,
   GetOrdersInput,
   GetInventoryInput,
-} from '@cof-org/mcp';
+} from '@virtocommerce/cof-mcp';
 
 describe('YourFulfillmentAdapter', () => {
   let adapter: YourFulfillmentAdapter;

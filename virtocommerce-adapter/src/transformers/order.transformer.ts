@@ -9,7 +9,7 @@ import type {
   Address,
   CreateSalesOrderInput,
   UpdateOrderInput,
-} from '@cof-org/mcp';
+} from '@virtocommerce/cof-mcp';
 import { STATUS_MAP, REVERSE_STATUS_MAP } from '../types.js';
 import type { CustomerOrder, LineItem, Shipment, DynamicObjectProperty, Contact } from '../models/index.js';
 import { BaseTransformer } from './base.js';

@@ -2,7 +2,7 @@
  * Address transformation utilities
  */
 
-import type { Address, CustomerAddress } from '@cof-org/mcp';
+import type { Address, CustomerAddress } from '@virtocommerce/cof-mcp';
 import type { YourFulfillmentAddress } from '../types.js';
 import type { Address as VirtoAddress } from '../models/index.js';
 import { BaseTransformer } from './base.js';

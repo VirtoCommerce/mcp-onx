@@ -1,5 +1,5 @@
 {
-  "name": "@virtocommerce/vc-fulfillment-mcp-adapter",
+  "name": "@virtocommerce/mcp-onx",
   "version": "1.0.0",
   "description": "Commerce Operations Foundation adapter for VirtoCommerce Fulfillment",
   "repository": {
@@ -54,7 +54,7 @@
     "typescript-eslint": "^8.7.0"
   },
   "dependencies": {
-    "@cof-org/mcp": "file:../server",
+    "@virtocommerce/cof-mcp": "^1.0.0",
     "axios": "^1.6.0"
   }
 }

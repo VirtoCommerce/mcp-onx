@@ -1,9 +1,9 @@
-import VirtoCommerceFulfillmentAdapter from '@virtocommerce/vc-fulfillment-mcp-adapter';
+import VirtoCommerceFulfillmentAdapter from '@virtocommerce/mcp-onx';
 
 async function main() {
   const adapter = new VirtoCommerceFulfillmentAdapter({
     type: 'npm',
-    package: '@virtocommerce/vc-fulfillment-mcp-adapter',
+    package: '@virtocommerce/mcp-onx',
     options: {
       apiUrl: 'https://api.yourfulfillment.com',
       apiKey: process.env.API_KEY || '',

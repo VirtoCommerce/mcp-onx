@@ -7,7 +7,7 @@ import type {
   FulfillmentToolResult,
   FulfillOrderInput,
   GetFulfillmentsInput,
-} from '@cof-org/mcp';
+} from '@virtocommerce/cof-mcp';
 import type { Shipment, CustomerOrder } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { FulfillmentTransformer } from '../transformers/fulfillment.transformer.js';

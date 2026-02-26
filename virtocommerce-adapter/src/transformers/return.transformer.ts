@@ -3,7 +3,7 @@
  * Bidirectional mapping between VirtoCommerce Return models and MCP Return format
  */
 
-import type { Return, ReturnLineItem, CreateReturnInput } from '@cof-org/mcp';
+import type { Return, ReturnLineItem, CreateReturnInput } from '@virtocommerce/cof-mcp';
 import type { VcReturn, VcReturnLineItem, CustomerOrder, LineItem } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 

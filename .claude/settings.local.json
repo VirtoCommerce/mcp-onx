@@ -50,7 +50,9 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(head:*)",
-      "Bash(cd \"e:/Develops/VirtoWay/projects/tasks/4464/mcp-reference-server/server\" && npm run test:unit 2>&1)"
+      "Bash(cd \"e:/Develops/VirtoWay/projects/tasks/4464/mcp-reference-server/server\" && npm run test:unit 2>&1)",
+      "Bash(sed:*)",
+      "Bash(npm:*)"
     ]
   }
 }

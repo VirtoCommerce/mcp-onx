@@ -40,7 +40,7 @@ These files merge with defaults before environment variables are applied. The sc
 Use the `ConfigManager` singleton to inspect or change settings programmatically:
 
 ```typescript
-import { ConfigManager } from '@cof-org/mcp';
+import { ConfigManager } from '@virtocommerce/cof-mcp';
 
 const manager = ConfigManager.getInstance();
 const loggingLevel = manager.get('logging.level');

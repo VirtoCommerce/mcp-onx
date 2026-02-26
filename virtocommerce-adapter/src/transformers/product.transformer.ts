@@ -2,7 +2,7 @@
  * Product, Product Variant, and Inventory transformation utilities
  */
 
-import type { Product, ProductVariant, InventoryItem } from '@cof-org/mcp';
+import type { Product, ProductVariant, InventoryItem } from '@virtocommerce/cof-mcp';
 import type { CatalogProduct, ProductProperty, InventoryInfo } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 

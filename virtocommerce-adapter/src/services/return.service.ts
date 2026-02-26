@@ -14,7 +14,7 @@ import type {
   FulfillmentToolResult,
   CreateReturnInput,
   GetReturnsInput,
-} from '@cof-org/mcp';
+} from '@virtocommerce/cof-mcp';
 import type { VcReturn, CustomerOrder, ReturnSearchResult } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { ReturnTransformer } from '../transformers/return.transformer.js';

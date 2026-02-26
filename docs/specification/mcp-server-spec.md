@@ -632,7 +632,7 @@ interface FulfillmentAdapter {
   "version": "1.0.0",
   "main": "dist/index.js",
   "peerDependencies": {
-    "@cof-org/mcp": "^1.0.0"
+    "@virtocommerce/cof-mcp": "^1.0.0"
   }
 }
 ```
@@ -640,7 +640,7 @@ interface FulfillmentAdapter {
 2. **Implement adapter:**
 
 ```typescript
-import { IFulfillmentAdapter } from '@cof-org/mcp';
+import { IFulfillmentAdapter } from '@virtocommerce/cof-mcp';
 
 export default class VendorAdapter implements IFulfillmentAdapter {
   constructor(options: any) {
@@ -677,7 +677,7 @@ my-fulfillment-adapter/
 2. **Implement adapter:**
 
 ```typescript
-import { IFulfillmentAdapter } from '@cof-org/mcp/types';
+import { IFulfillmentAdapter } from '@virtocommerce/cof-mcp/types';
 
 export default class RetailerAdapter implements IFulfillmentAdapter {
   // Implementation

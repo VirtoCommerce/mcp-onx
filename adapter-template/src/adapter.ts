@@ -36,8 +36,8 @@ import type {
   CustomerAddress,
   OrderLineItem,
   CustomField,
-} from '@cof-org/mcp';
-import { AdapterError } from '@cof-org/mcp';
+} from '@virtocommerce/cof-mcp';
+import { AdapterError } from '@virtocommerce/cof-mcp';
 import { ApiClient } from './utils/api-client.js';
 import type {
   AdapterOptions as TemplateAdapterOptions,

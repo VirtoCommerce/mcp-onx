@@ -2,7 +2,7 @@
  * Customer service - handles customer-related operations
  */
 
-import type { Customer, FulfillmentToolResult, GetCustomersInput } from '@cof-org/mcp';
+import type { Customer, FulfillmentToolResult, GetCustomersInput } from '@virtocommerce/cof-mcp';
 import type { Contact, MemberSearchCriteria } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { CustomerTransformer } from '../transformers/customer.transformer.js';
