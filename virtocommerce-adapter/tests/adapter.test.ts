@@ -120,9 +120,6 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
             firstName: 'John',
             lastName: 'Doe',
             phone: '+1234567890',
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z',
-            tenantId: 'test-tenant',
           },
           shippingAddress: {
             firstName: 'John',
@@ -1802,7 +1799,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       const input: CreateSalesOrderInput = {
         order: {
           lineItems: [{ sku: 'PROD-001', quantity: 1 }],
-          customer: { id: 'CUST-001', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', tenantId: 'test-tenant' },
+          customer: { id: 'CUST-001' },
         },
       };
 
