@@ -11,7 +11,7 @@ import type {
   UpdateOrderInput,
 } from '@virtocommerce/cof-mcp';
 import { STATUS_MAP, REVERSE_STATUS_MAP } from '../types.js';
-import type { CustomerOrder, LineItem, Shipment, DynamicObjectProperty, Contact } from '../models/index.js';
+import type { CustomerOrder, LineItem, Shipment, ShipmentItem, DynamicObjectProperty, Contact } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';
 import { CustomerTransformer } from './customer.transformer.js';
@@ -49,9 +49,7 @@ export class OrderTransformer extends BaseTransformer {
    * @param contact - Optional loaded Contact for the customer (if available)
    */
   toMcpOrder(order: CustomerOrder, contact?: Contact): Order {
-    const shippingAddress = order.shipments
-      ?.map((x) => x.deliveryAddress)
-      .find((x) => x);
+    const shipment = order.shipments?.[0];
 
     const orderId = order.id ?? '';
 
@@ -68,7 +66,12 @@ export class OrderTransformer extends BaseTransformer {
       totalPrice: order.total,
       currency: order.currency,
       customer,
-      shippingAddress: this.addressTransformer.toMcpAddress(shippingAddress),
+      shippingAddress: this.addressTransformer.toMcpAddress(shipment?.deliveryAddress),
+      shippingCarrier: shipment?.shippingMethod?.name ?? shipment?.shipmentMethodCode,
+      shippingClass: shipment?.shipmentMethodOption,
+      shippingCode: shipment?.shipmentMethodCode,
+      shippingPrice: shipment?.price,
+      shippingNote: shipment?.comment,
       billingAddress: this.addressTransformer.toMcpAddress(order.addresses?.[0]),
       lineItems: order.items?.map((item, index) => this.toOrderLineItem(orderId, item, index)) ?? [],
       createdAt: order.createdDate ?? this.now(),
@@ -129,14 +132,35 @@ export class OrderTransformer extends BaseTransformer {
         };
       }) ?? [];
 
-    const shipments: Shipment[] = order.shippingAddress
+    const hasShippingData =
+      order.shippingAddress ||
+      order.shippingCarrier ||
+      order.shippingCode ||
+      order.shippingClass ||
+      order.shippingPrice !== undefined ||
+      order.shippingNote ||
+      order.giftNote;
+
+    const commentParts = [order.giftNote, order.shippingNote].filter(Boolean);
+    const shipmentComment = commentParts.length > 0 ? commentParts.join('\n').slice(0, 2048) : undefined;
+
+    const shipmentItems: ShipmentItem[] = items.map((item) => ({
+      lineItem: item,
+      quantity: item.quantity,
+    }));
+
+    const shipments: Shipment[] = hasShippingData
       ? [
           {
-            deliveryAddress: this.addressTransformer.toVirtoAddress(
-              order.shippingAddress,
-              'Shipping'
-            ),
+          deliveryAddress: order.shippingAddress
+            ? this.addressTransformer.toVirtoAddress(order.shippingAddress, 'Shipping')
+            : undefined,
+          shipmentMethodCode: order.shippingCarrier ?? order.shippingCode,
+          shipmentMethodOption: order.shippingClass,
+          price: order.shippingPrice,
+          comment: shipmentComment,
             currency,
+            items: shipmentItems,
           },
         ]
       : [];
@@ -195,6 +219,47 @@ export class OrderTransformer extends BaseTransformer {
       }
       // Also update in the order-level addresses array
       this.upsertAddress(updated, virtoShipping, 'Shipping');
+    }
+
+    const shippingCarrier = this.valueOrUndefined(
+      (updates as { shippingCarrier?: string | null }).shippingCarrier
+    );
+    const shippingClass = this.valueOrUndefined(
+      (updates as { shippingClass?: string | null }).shippingClass
+    );
+    const shippingCode = this.valueOrUndefined(
+      (updates as { shippingCode?: string | null }).shippingCode
+    );
+    const shippingPrice = this.valueOrUndefined(
+      (updates as { shippingPrice?: number | null }).shippingPrice
+    );
+    const shippingNote = this.valueOrUndefined(
+      (updates as { shippingNote?: string | null }).shippingNote
+    );
+    const giftNote = this.valueOrUndefined((updates as { giftNote?: string | null }).giftNote);
+
+    const hasShippingUpdates =
+      shippingCarrier !== undefined ||
+      shippingClass !== undefined ||
+      shippingCode !== undefined ||
+      shippingPrice !== undefined ||
+      shippingNote !== undefined ||
+      giftNote !== undefined;
+
+    if (hasShippingUpdates) {
+      if (!updated.shipments?.length) {
+        updated.shipments = [{ currency: updated.currency }];
+      }
+      const s = { ...updated.shipments[0] };
+      if (shippingCarrier !== undefined) { s.shipmentMethodCode = shippingCarrier; }
+      if (shippingClass !== undefined) { s.shipmentMethodOption = shippingClass; }
+      if (shippingCode !== undefined) { s.shipmentMethodCode = shippingCode; }
+      if (shippingPrice !== undefined) { s.price = shippingPrice; }
+      if (shippingNote !== undefined || giftNote !== undefined) {
+        const parts = [giftNote ?? s.comment?.split('\n')[0], shippingNote].filter(Boolean);
+        s.comment = parts.length ? parts.join('\n').slice(0, 2048) : undefined;
+      }
+      updated.shipments = [s, ...updated.shipments.slice(1)];
     }
 
     const billingAddress = this.valueOrUndefined(

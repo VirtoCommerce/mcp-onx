@@ -134,7 +134,7 @@ export interface FulfillmentCenter {
 export type ShipmentStatus =
   | 'New'
   | 'PickPack'
-  | 'ReadyToShip'
+  | 'ReadyToSend'
   | 'Shipped'
   | 'Delivered'
   | 'Cancelled'

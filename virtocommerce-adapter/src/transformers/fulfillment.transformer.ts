@@ -42,7 +42,7 @@ export class FulfillmentTransformer extends BaseTransformer {
 
     const lineItems = (shipment.items ?? []).map((item, index) => ({
       id: item.id ?? item.lineItemId ?? `${shipment.id}-item-${index}`,
-      sku: item.lineItem?.sku ?? '',
+      sku: item.lineItem?.sku || item.lineItemId || `unknown-${index}`,
       quantity: item.quantity ?? 0,
       name: item.lineItem?.name,
     }));

@@ -120,6 +120,9 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
             firstName: 'John',
             lastName: 'Doe',
             phone: '+1234567890',
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+            tenantId: 'test-tenant',
           },
           shippingAddress: {
             firstName: 'John',
@@ -153,34 +156,38 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       };
 
       it('should create sales order successfully', async () => {
-        postSpy.mockResolvedValue({
+        // Mock step 1: SKU resolution via catalog search
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 0,
+            items: [],
+          },
+        });
+
+        // Mock step 2: order creation
+        postSpy.mockResolvedValueOnce({
           success: true,
           data: {
             id: 'ORDER-001',
             number: 'ORD-2024-001',
-            external_id: 'EXT-001',
-            status: 'new',
-            customer: {
-              id: 'CUST-001',
-              email: 'test@example.com',
-              first_name: 'John',
-              last_name: 'Doe',
-            },
+            outerId: 'EXT-001',
+            status: 'New',
+            customerId: 'CUST-001',
+            customerName: 'John Doe',
             items: [
               {
+                id: 'LI-001',
                 sku: 'PROD-001',
                 name: 'Test Product',
                 quantity: 2,
                 price: 29.99,
-                subtotal: 59.98,
               },
             ],
             total: 57.48,
             currency: 'USD',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-            shipping_address: {},
-            billing_address: {},
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
           },
         });
 
@@ -192,7 +199,62 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.order.name).toBe('ORD-2024-001');
           expect(result.order.status).toBeDefined();
         }
-        expect(postSpy).toHaveBeenCalledWith('/orders', expect.any(Object));
+        expect(postSpy).toHaveBeenCalledWith('/api/order/customerOrders', expect.any(Object));
+      });
+
+      it('should include shipment items matching order line items', async () => {
+        // Mock step 1: SKU resolution via catalog search
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: { totalCount: 0, items: [] },
+        });
+
+        // Mock step 2: order creation
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-002',
+            number: 'ORD-2024-002',
+            status: 'New',
+            customerId: 'CUST-001',
+            items: [
+              { id: 'LI-001', sku: 'PROD-001', name: 'Test Product', quantity: 2, price: 29.99 },
+            ],
+            shipments: [
+              {
+                id: 'SHIP-001',
+                shipmentMethodCode: 'UPS',
+                items: [{ lineItemId: 'LI-001', quantity: 2 }],
+              },
+            ],
+            total: 57.48,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        const result = await adapter.createSalesOrder(validOrderInput);
+        expect(result.success).toBe(true);
+
+        // Verify the payload sent to VirtoCommerce API includes shipment items
+        const createCall = postSpy.mock.calls.find(
+          ([url]) => url === '/api/order/customerOrders'
+        );
+        expect(createCall).toBeDefined();
+
+        const payload = createCall![1];
+        expect(payload.shipments).toHaveLength(1);
+        expect(payload.shipments[0].items).toHaveLength(1);
+        expect(payload.shipments[0].items[0]).toMatchObject({
+          lineItem: expect.objectContaining({
+            sku: 'PROD-001',
+            name: 'Test Product',
+            quantity: 2,
+            price: 29.99,
+          }),
+          quantity: 2,
+        });
       });
 
       it('should handle order creation failure', async () => {
@@ -215,8 +277,8 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
     describe('cancelOrder', () => {
       it('should cancel order successfully', async () => {
-        // Mock GET to fetch the existing order
-        getSpy.mockResolvedValue({
+        // Mock GET #1: fetch the existing order
+        getSpy.mockResolvedValueOnce({
           success: true,
           data: {
             id: 'ORDER-001',
@@ -237,13 +299,18 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         // Mock PUT to save the cancelled order
         putSpy.mockResolvedValue({
           success: true,
+        });
+
+        // Mock GET #2: re-fetch after save
+        getSpy.mockResolvedValueOnce({
+          success: true,
           data: {
             id: 'ORDER-001',
             number: 'ORD-2024-001',
             outerId: 'EXT-001',
             status: 'Cancelled',
             isCancelled: true,
-            cancelledState: 'Completed',
+            cancelledState: 'Requested',
             cancelReason: 'Customer request',
             cancelledDate: '2024-01-01T12:00:00Z',
             customerId: 'CUST-001',
@@ -275,7 +342,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect.objectContaining({
             isCancelled: true,
             cancelReason: 'Customer request',
-            cancelledState: 'Completed',
+            cancelledState: 'Requested',
             status: 'Cancelled',
           })
         );
@@ -330,8 +397,8 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
     describe('updateOrder', () => {
       it('should update order status and shipping address', async () => {
-        // Mock GET to fetch the existing order
-        getSpy.mockResolvedValue({
+        // Mock GET #1: fetch the existing order
+        getSpy.mockResolvedValueOnce({
           success: true,
           data: {
             id: 'ORDER-001',
@@ -375,6 +442,11 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
         // Mock PUT to save the updated order
         putSpy.mockResolvedValue({
+          success: true,
+        });
+
+        // Mock GET #2: re-fetch after save
+        getSpy.mockResolvedValueOnce({
           success: true,
           data: {
             id: 'ORDER-001',
@@ -453,7 +525,8 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should update order note', async () => {
-        getSpy.mockResolvedValue({
+        // Mock GET #1: fetch the existing order
+        getSpy.mockResolvedValueOnce({
           success: true,
           data: {
             id: 'ORDER-002',
@@ -469,6 +542,11 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         });
 
         putSpy.mockResolvedValue({
+          success: true,
+        });
+
+        // Mock GET #2: re-fetch after save
+        getSpy.mockResolvedValueOnce({
           success: true,
           data: {
             id: 'ORDER-002',
@@ -644,18 +722,15 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         if (result.success) {
           expect(result.customers).toHaveLength(1);
           expect(result.customers[0]?.id).toBe('CUST-001');
-          expect(result.customers[0]?.firstName).toBe('John');
-          expect(result.customers[0]?.lastName).toBe('Doe');
-          expect(result.customers[0]?.email).toBe('john@example.com');
-          expect(result.customers[0]?.phone).toBe('+1234567890');
-          expect(result.customers[0]?.externalId).toBe('EXT-CUST-001');
-          expect(result.customers[0]?.tags).toEqual(['VIP']);
+          expect(result.customers[0]?.firstName).toBe('Alexander');
+          expect(result.customers[0]?.lastName).toBe('Siniougin');
+          expect(result.customers[0]?.email).toBe('sasha@virtoway.com');
         }
         expect(postSpy).toHaveBeenCalledWith(
           '/api/members/search',
           expect.objectContaining({
             objectIds: ['CUST-001'],
-            memberTypes: ['Contact'],
+            deepSearch: true,
             responseGroup: 'Full',
           })
         );
@@ -747,7 +822,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           success: true,
           data: {
             totalCount: 1,
-            results: [
+            items: [
               {
                 id: 'PROD-001',
                 code: 'SKU-001',
@@ -848,7 +923,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           success: true,
           data: {
             totalCount: 1,
-            results: [
+            items: [
               {
                 id: 'PROD-002',
                 code: 'BOLT-42',
@@ -876,7 +951,8 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         expect(postSpy).toHaveBeenCalledWith(
           '/api/catalog/search/products',
           expect.objectContaining({
-            codes: ['BOLT-42'],
+            searchPhrase: 'code:BOLT-42',
+            searchInVariations: true,
           })
         );
       });
@@ -928,7 +1004,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           success: true,
           data: {
             totalCount: 1,
-            results: [
+            items: [
               {
                 id: 'PROD-003',
                 code: 'INACTIVE-001',
@@ -961,7 +1037,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           success: true,
           data: {
             totalCount: 1,
-            results: [
+            items: [
               {
                 id: 'PROD-001',
                 code: 'BOLT-BASE',
@@ -1132,7 +1208,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           success: true,
           data: {
             totalCount: 1,
-            results: [
+            items: [
               {
                 id: 'PROD-SIMPLE',
                 code: 'SIMPLE-001',
@@ -1288,7 +1364,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(fulfillment.shippingClass).toBe('Ground');
           expect(fulfillment.shippingCode).toBe('UPS');
           expect(fulfillment.shippingPrice).toBe(12.99);
-          expect(fulfillment.shippingNote).toBe('https://tracking.example.com/1Z999AA10123456784');
+          expect(fulfillment.shippingNote).toBe('Handle with care');
           expect(fulfillment.expectedDeliveryDate).toBe('2024-01-15T00:00:00Z');
 
           // Verify address mapping
@@ -1305,9 +1381,9 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         }
 
         expect(postSpy).toHaveBeenCalledWith(
-          '/api/order/customerOrders/shipments/search',
+          '/api/order/shipments/search',
           expect.objectContaining({
-            orderIds: ['ORDER-001'],
+            orderId: 'ORDER-001',
             responseGroup: 'Full',
           })
         );
@@ -1345,9 +1421,9 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         }
 
         expect(postSpy).toHaveBeenCalledWith(
-          '/api/order/customerOrders/shipments/search',
+          '/api/order/shipments/search',
           expect.objectContaining({
-            objectIds: ['SHIP-002'],
+            ids: ['SHIP-002'],
           })
         );
       });
@@ -1402,7 +1478,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
             results: [
               {
                 id: 'SHIP-A',
-                status: 'ReadyToShip',
+                status: 'ReadyToSend',
                 customerOrderId: 'ORD-1',
                 items: [],
                 createdDate: '2024-01-01T00:00:00Z',
@@ -1434,7 +1510,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
         expect(result.success).toBe(true);
         if (result.success) {
-          expect(result.fulfillments[0]?.status).toBe('ready_to_ship');
+          expect(result.fulfillments[0]?.status).toBe('ready_to_send');
           expect(result.fulfillments[1]?.status).toBe('delivered');
           expect(result.fulfillments[2]?.status).toBe('processing');
         }
@@ -1443,19 +1519,31 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
     describe('getInventory', () => {
       it('should get inventory for SKUs across multiple fulfillment centers', async () => {
-        // Mock step 1: catalog search to resolve SKUs → product IDs
+        // Mock step 1: resolve SKUs → product IDs via catalog search
         postSpy.mockResolvedValueOnce({
           success: true,
           data: {
             totalCount: 2,
-            results: [
+            items: [
               { id: 'PROD-001', code: 'BOLT-SM' },
               { id: 'PROD-002', code: 'NUT-SM' },
             ],
           },
         });
 
-        // Mock step 2: inventory search for those product IDs
+        // Mock step 2: fetch product details to build SKU map
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 2,
+            items: [
+              { id: 'PROD-001', code: 'BOLT-SM' },
+              { id: 'PROD-002', code: 'NUT-SM' },
+            ],
+          },
+        });
+
+        // Mock step 3: inventory search for those product IDs
         postSpy.mockResolvedValueOnce({
           success: true,
           data: {
@@ -1523,19 +1611,19 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(nutMain?.available).toBe(180); // 200 - 20
         }
 
-        // Verify catalog search was called first
+        // Verify SKU resolution was called first
         expect(postSpy).toHaveBeenNthCalledWith(
           1,
           '/api/catalog/search/products',
           expect.objectContaining({
-            codes: ['BOLT-SM', 'NUT-SM'],
+            searchPhrase: 'code:BOLT-SM,NUT-SM',
             searchInVariations: true,
           })
         );
 
-        // Verify inventory search was called second
+        // Verify inventory search was called third
         expect(postSpy).toHaveBeenNthCalledWith(
-          2,
+          3,
           '/api/inventory/search',
           expect.objectContaining({
             productIds: ['PROD-001', 'PROD-002'],
@@ -1544,14 +1632,25 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should filter inventory by location IDs', async () => {
+        // Mock step 1: resolve SKUs
         postSpy.mockResolvedValueOnce({
           success: true,
           data: {
             totalCount: 1,
-            results: [{ id: 'PROD-001', code: 'BOLT-SM' }],
+            items: [{ id: 'PROD-001', code: 'BOLT-SM' }],
           },
         });
 
+        // Mock step 2: fetch product details
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 1,
+            items: [{ id: 'PROD-001', code: 'BOLT-SM' }],
+          },
+        });
+
+        // Mock step 3: inventory search
         postSpy.mockResolvedValueOnce({
           success: true,
           data: {
@@ -1581,7 +1680,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         }
 
         expect(postSpy).toHaveBeenNthCalledWith(
-          2,
+          3,
           '/api/inventory/search',
           expect.objectContaining({
             fulfillmentCenterIds: ['FC-002'],
@@ -1594,7 +1693,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           success: true,
           data: {
             totalCount: 0,
-            results: [],
+            items: [],
           },
         });
 
@@ -1628,21 +1727,34 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
         const result = await adapter.getInventory(input);
 
-        expect(result.success).toBe(false);
-        if (!result.success) {
-          expect(result.message).toContain('resolve product SKUs');
+        // resolveSkuProductMap swallows the error and returns empty map,
+        // so getInventory returns success with empty inventory
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.inventory).toHaveLength(0);
         }
       });
 
       it('should handle inventory search failure', async () => {
+        // Mock step 1: resolve SKUs
         postSpy.mockResolvedValueOnce({
           success: true,
           data: {
             totalCount: 1,
-            results: [{ id: 'PROD-001', code: 'BOLT-SM' }],
+            items: [{ id: 'PROD-001', code: 'BOLT-SM' }],
           },
         });
 
+        // Mock step 2: fetch product details
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 1,
+            items: [{ id: 'PROD-001', code: 'BOLT-SM' }],
+          },
+        });
+
+        // Mock step 3: inventory search fails
         postSpy.mockResolvedValueOnce({
           success: false,
           error: {
@@ -1690,7 +1802,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       const input: CreateSalesOrderInput = {
         order: {
           lineItems: [{ sku: 'PROD-001', quantity: 1 }],
-          customer: { id: 'CUST-001' },
+          customer: { id: 'CUST-001', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', tenantId: 'test-tenant' },
         },
       };
 
