@@ -46,11 +46,13 @@ import {
   ReturnService,
 } from './services/index.js';
 import type { CountryEntry } from './transformers/address.transformer.js';
+import type { Store } from './models/index.js';
 
 export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
   private client: ApiClient;
   private connected = false;
   private options: AdapterOptions;
+  private store?: Store;
 
   // Domain services
   private orderService: OrderService;
@@ -122,9 +124,9 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
       this.connected = true;
       console.error('Successfully connected to VirtoCommerce');
 
-      // Fetch catalogId from store configuration if workspace is set and catalogId is not already provided
-      if (this.options.workspace && !this.options.catalogId) {
-        await this.fetchCatalogId();
+      // Fetch store configuration when workspace is set
+      if (this.options.workspace) {
+        await this.fetchStore();
       }
 
       // Fetch country list for address resolution
@@ -302,20 +304,29 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
     }
   }
 
-  private async fetchCatalogId(): Promise<void> {
+  private async fetchStore(): Promise<void> {
     try {
-      const storeResponse = await this.client.get<{ catalog?: string }>(`/api/stores/${this.options.workspace}`);
+      const response = await this.client.get<Store>(`/api/stores/${this.options.workspace}`);
 
-      if (storeResponse.success && storeResponse.data?.catalog) {
-        this.options.catalogId = storeResponse.data.catalog;
-        this.orderService.setCatalogId(storeResponse.data.catalog);
-        this.productService.setCatalogId(storeResponse.data.catalog);
-        console.error(`Resolved catalogId "${storeResponse.data.catalog}" from store "${this.options.workspace}"`);
-      } else {
-        console.error(`Warning: Could not resolve catalogId from store "${this.options.workspace}"`);
+      if (!response.success || !response.data) {
+        console.error(`Warning: Could not fetch store "${this.options.workspace}"`);
+        return;
       }
+
+      this.store = response.data;
+      console.error(`Loaded store "${this.store.name ?? this.store.id}" (catalog: ${this.store.catalog ?? 'n/a'})`);
+
+      // Propagate catalogId to services that need it
+      if (this.store.catalog && !this.options.catalogId) {
+        this.options.catalogId = this.store.catalog;
+        this.orderService.setCatalogId(this.store.catalog);
+        this.productService.setCatalogId(this.store.catalog);
+      }
+
+      // Propagate store info to order service
+      this.orderService.setStore(this.store);
     } catch (error: unknown) {
-      console.error(`Warning: Failed to fetch store info for catalogId resolution: ${getErrorMessage(error)}`);
+      console.error(`Warning: Failed to fetch store info: ${getErrorMessage(error)}`);
     }
   }
 

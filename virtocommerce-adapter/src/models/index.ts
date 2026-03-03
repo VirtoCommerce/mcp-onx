@@ -137,6 +137,9 @@ export type {
   ReturnSearchResult,
 } from './return.js';
 
+// Store models
+export type { Store } from './store.js';
+
 // Search models
 export type {
   SearchCriteriaBase,

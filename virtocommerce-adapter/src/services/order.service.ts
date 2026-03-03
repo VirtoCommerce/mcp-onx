@@ -16,6 +16,7 @@ import type {
   CustomerOrderSearchResult,
   CustomerOrderSearchCriteria,
   Address as VirtoAddress,
+  Store,
 } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { OrderTransformer } from '../transformers/order.transformer.js';
@@ -55,6 +56,10 @@ export class OrderService extends BaseService {
 
   setCatalogId(catalogId: string): void {
     this.transformer.setCatalogId(catalogId);
+  }
+
+  setStore(store: Store): void {
+    this.transformer.setStore(store);
   }
 
   setCountries(countries: CountryEntry[]): void {

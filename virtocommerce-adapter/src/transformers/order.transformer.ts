@@ -20,6 +20,7 @@ import type {
   Contact,
   PaymentIn,
   Address as VirtoAddress,
+  Store,
 } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer, type CountryEntry } from './address.transformer.js';
@@ -35,6 +36,7 @@ export class OrderTransformer extends BaseTransformer {
   private customerTransformer: CustomerTransformer;
   private workspace?: string;
   private catalogId?: string;
+  private store?: Store;
 
   constructor(tenantId: string = 'default-workspace', workspace?: string) {
     super(tenantId);
@@ -59,6 +61,10 @@ export class OrderTransformer extends BaseTransformer {
 
   setCatalogId(catalogId: string): void {
     this.catalogId = catalogId;
+  }
+
+  setStore(store: Store): void {
+    this.store = store;
   }
 
   /**
@@ -232,6 +238,7 @@ export class OrderTransformer extends BaseTransformer {
       customerId: order.customer?.id ?? order.customer?.externalId,
       customerName,
       storeId: this.workspace,
+      storeName: this.store?.name,
       comment: order.orderNote,
       items,
       addresses: addresses.length ? addresses : undefined,
