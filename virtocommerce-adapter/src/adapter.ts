@@ -45,6 +45,7 @@ import {
   ProductService,
   ReturnService,
 } from './services/index.js';
+import type { CountryEntry } from './transformers/address.transformer.js';
 
 export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
   private client: ApiClient;
@@ -125,6 +126,9 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
       if (this.options.workspace && !this.options.catalogId) {
         await this.fetchCatalogId();
       }
+
+      // Fetch country list for address resolution
+      await this.fetchCountries();
     } catch (error: unknown) {
       this.connected = false;
       throw new AdapterError(
@@ -312,6 +316,24 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
       }
     } catch (error: unknown) {
       console.error(`Warning: Failed to fetch store info for catalogId resolution: ${getErrorMessage(error)}`);
+    }
+  }
+
+  private async fetchCountries(): Promise<void> {
+    try {
+      const response = await this.client.get<CountryEntry[]>('/api/platform/common/countries');
+
+      if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+        const countries = response.data;
+        this.orderService.setCountries(countries);
+        this.customerService.setCountries(countries);
+        this.fulfillmentService.setCountries(countries);
+        console.error(`Loaded ${countries.length} countries for address resolution`);
+      } else {
+        console.error('Warning: Could not load countries list for address resolution');
+      }
+    } catch (error: unknown) {
+      console.error(`Warning: Failed to fetch countries: ${getErrorMessage(error)}`);
     }
   }
 

@@ -19,6 +19,7 @@ import type {
 } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { OrderTransformer } from '../transformers/order.transformer.js';
+import type { CountryEntry } from '../transformers/address.transformer.js';
 import { CustomerService } from './customer.service.js';
 import { mapOrderFiltersToSearchCriteria } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
@@ -54,6 +55,10 @@ export class OrderService extends BaseService {
 
   setCatalogId(catalogId: string): void {
     this.transformer.setCatalogId(catalogId);
+  }
+
+  setCountries(countries: CountryEntry[]): void {
+    this.transformer.setCountries(countries);
   }
 
   async createSalesOrder(input: CreateSalesOrderInput): Promise<OrderResult> {

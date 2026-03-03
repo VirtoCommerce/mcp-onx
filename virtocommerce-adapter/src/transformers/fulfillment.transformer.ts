@@ -5,7 +5,7 @@
 import type { Fulfillment, FulfillOrderInput } from '@virtocommerce/cof-mcp';
 import type { Shipment, ShipmentItem, LineItem } from '../models/index.js';
 import { BaseTransformer } from './base.js';
-import { AddressTransformer } from './address.transformer.js';
+import { AddressTransformer, type CountryEntry } from './address.transformer.js';
 
 const SHIPMENT_STATUS_MAP: Record<string, string> = {
   // Standard VC shipment statuses (from ModuleConstants)
@@ -32,6 +32,10 @@ export class FulfillmentTransformer extends BaseTransformer {
   override setTenantId(tenantId: string): void {
     super.setTenantId(tenantId);
     this.addressTransformer.setTenantId(tenantId);
+  }
+
+  setCountries(countries: CountryEntry[]): void {
+    this.addressTransformer.setCountries(countries);
   }
 
   /**

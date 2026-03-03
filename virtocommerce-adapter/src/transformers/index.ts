@@ -4,7 +4,7 @@
  */
 
 export { BaseTransformer } from './base.js';
-export { AddressTransformer } from './address.transformer.js';
+export { AddressTransformer, type CountryEntry } from './address.transformer.js';
 export { CustomerTransformer } from './customer.transformer.js';
 export { OrderTransformer } from './order.transformer.js';
 export { FulfillmentTransformer } from './fulfillment.transformer.js';

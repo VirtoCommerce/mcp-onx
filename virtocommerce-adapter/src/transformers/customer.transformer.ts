@@ -6,7 +6,7 @@ import type { Customer } from '@virtocommerce/cof-mcp';
 import type { YourFulfillmentCustomer } from '../types.js';
 import type { CustomerOrder, Contact, Address } from '../models/index.js';
 import { BaseTransformer } from './base.js';
-import { AddressTransformer } from './address.transformer.js';
+import { AddressTransformer, type CountryEntry } from './address.transformer.js';
 
 export class CustomerTransformer extends BaseTransformer {
   private addressTransformer: AddressTransformer;
@@ -19,6 +19,10 @@ export class CustomerTransformer extends BaseTransformer {
   override setTenantId(tenantId: string): void {
     super.setTenantId(tenantId);
     this.addressTransformer.setTenantId(tenantId);
+  }
+
+  setCountries(countries: CountryEntry[]): void {
+    this.addressTransformer.setCountries(countries);
   }
 
   /**

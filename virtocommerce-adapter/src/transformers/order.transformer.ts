@@ -22,7 +22,7 @@ import type {
   Address as VirtoAddress,
 } from '../models/index.js';
 import { BaseTransformer } from './base.js';
-import { AddressTransformer } from './address.transformer.js';
+import { AddressTransformer, type CountryEntry } from './address.transformer.js';
 import { CustomerTransformer } from './customer.transformer.js';
 
 export interface CreateOrderEnrichment {
@@ -47,6 +47,10 @@ export class OrderTransformer extends BaseTransformer {
     super.setTenantId(tenantId);
     this.addressTransformer.setTenantId(tenantId);
     this.customerTransformer.setTenantId(tenantId);
+  }
+
+  setCountries(countries: CountryEntry[]): void {
+    this.addressTransformer.setCountries(countries);
   }
 
   setWorkspace(workspace: string): void {
@@ -256,11 +260,13 @@ export class OrderTransformer extends BaseTransformer {
     );
     if (shippingAddress) {
       const virtoShipping = this.addressTransformer.toVirtoAddress(shippingAddress, 'Shipping');
-      // Update shipping address on the first shipment
+      // Update or create shipment with delivery address
       if (updated.shipments?.length) {
         updated.shipments = updated.shipments.map((s, i) =>
           i === 0 ? { ...s, deliveryAddress: virtoShipping } : s
         );
+      } else {
+        updated.shipments = [{ deliveryAddress: virtoShipping, currency: updated.currency }];
       }
       // Also update in the order-level addresses array
       this.upsertAddress(updated, virtoShipping, 'Shipping');

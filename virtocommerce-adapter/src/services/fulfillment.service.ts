@@ -11,6 +11,7 @@ import type {
 import type { Shipment, CustomerOrder } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { FulfillmentTransformer } from '../transformers/fulfillment.transformer.js';
+import type { CountryEntry } from '../transformers/address.transformer.js';
 import { mapFulfillmentFiltersToSearchCriteria } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
 import { ApiClient } from '../utils/api-client.js';
@@ -31,6 +32,10 @@ export class FulfillmentService extends BaseService {
 
   setWorkspace(workspace: string): void {
     this.workspace = workspace;
+  }
+
+  setCountries(countries: CountryEntry[]): void {
+    this.transformer.setCountries(countries);
   }
 
   async fulfillOrder(

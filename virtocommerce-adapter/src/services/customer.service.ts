@@ -6,6 +6,7 @@ import type { Customer, FulfillmentToolResult, GetCustomersInput } from '@virtoc
 import type { Contact, MemberSearchCriteria } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { CustomerTransformer } from '../transformers/customer.transformer.js';
+import type { CountryEntry } from '../transformers/address.transformer.js';
 import { mapCustomerFiltersToSearchCriteria } from '../mappers/filter.mappers.js';
 import { getErrorMessage } from '../utils/type-guards.js';
 import { ApiClient } from '../utils/api-client.js';
@@ -20,6 +21,10 @@ export class CustomerService extends BaseService {
 
   setTenantId(tenantId: string): void {
     this.transformer.setTenantId(tenantId);
+  }
+
+  setCountries(countries: CountryEntry[]): void {
+    this.transformer.setCountries(countries);
   }
 
   /**
