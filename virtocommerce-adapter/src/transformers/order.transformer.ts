@@ -127,17 +127,19 @@ export class OrderTransformer extends BaseTransformer {
 
     const currency = order.currency ?? 'USD';
 
-    // Use input addresses, fall back to enrichment defaults
+    // Use input addresses, fall back to enrichment defaults.
+    // When copying Contact addresses, strip identity fields (key, id, outerId)
+    // so VirtoCommerce creates new AddressEntity records instead of tracking duplicates.
     const shippingAddress = order.shippingAddress
       ? this.addressTransformer.toVirtoAddress(order.shippingAddress, 'Shipping')
       : enrichment?.defaultShippingAddress
-        ? { ...enrichment.defaultShippingAddress, addressType: 'Shipping' as const }
+        ? this.stripAddressIdentity(enrichment.defaultShippingAddress, 'Shipping')
         : undefined;
 
     const billingAddress = order.billingAddress
       ? this.addressTransformer.toVirtoAddress(order.billingAddress, 'Billing')
       : enrichment?.defaultBillingAddress
-        ? { ...enrichment.defaultBillingAddress, addressType: 'Billing' as const }
+        ? this.stripAddressIdentity(enrichment.defaultBillingAddress, 'Billing')
         : undefined;
 
     const addresses = [shippingAddress, billingAddress].filter(
@@ -339,6 +341,19 @@ export class OrderTransformer extends BaseTransformer {
     }
 
     return updated;
+  }
+
+  /**
+   * Create a copy of a VirtoCommerce address with identity fields removed.
+   * Used when copying Contact default addresses into a new order to avoid
+   * EF Core tracking conflicts (duplicate AddressEntity with same Id).
+   */
+  private stripAddressIdentity(
+    address: VirtoAddress,
+    addressType: 'Billing' | 'Shipping'
+  ): VirtoAddress {
+    const { key: _key, outerId: _outerId, ...rest } = address;
+    return { ...rest, addressType };
   }
 
   /**
