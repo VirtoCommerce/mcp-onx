@@ -153,6 +153,12 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       };
 
       it('should create sales order successfully', async () => {
+        // Mock customer lookup
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: { id: 'CUST-001', firstName: 'John', lastName: 'Doe', emails: ['test@example.com'] },
+        });
+
         // Mock step 1: SKU resolution via catalog search
         postSpy.mockResolvedValueOnce({
           success: true,
@@ -197,9 +203,29 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.order.status).toBeDefined();
         }
         expect(postSpy).toHaveBeenCalledWith('/api/order/customerOrders', expect.any(Object));
+
+        // Verify payment document is included
+        const createCall = postSpy.mock.calls.find(
+          ([url]) => url === '/api/order/customerOrders'
+        );
+        const payload = createCall![1];
+        expect(payload.inPayments).toHaveLength(1);
+        expect(payload.inPayments[0]).toMatchObject({
+          currency: 'USD',
+          paymentStatus: 'New',
+          gatewayCode: 'DefaultManualPaymentMethod',
+          objectType: 'PaymentIn',
+          customerId: 'CUST-001',
+        });
       });
 
       it('should include shipment items matching order line items', async () => {
+        // Mock customer lookup
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: { id: 'CUST-001', firstName: 'John', lastName: 'Doe' },
+        });
+
         // Mock step 1: SKU resolution via catalog search
         postSpy.mockResolvedValueOnce({
           success: true,
@@ -255,6 +281,9 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
       });
 
       it('should handle order creation failure', async () => {
+        // Mock customer lookup (returns null/failure)
+        getSpy.mockResolvedValueOnce({ success: false });
+
         postSpy.mockResolvedValue({
           success: false,
           error: {
@@ -269,6 +298,243 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         if (!result.success) {
           expect(result.error).toBeDefined();
         }
+      });
+
+      it('should use customer default address when not provided in input', async () => {
+        const inputWithoutAddress: CreateSalesOrderInput = {
+          order: {
+            lineItems: [{ sku: 'PROD-001', quantity: 1, unitPrice: 10.0, name: 'Widget' }],
+            customer: { id: 'CUST-002' },
+            currency: 'USD',
+          },
+        };
+
+        // Mock customer lookup with addresses
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'CUST-002',
+            firstName: 'Jane',
+            lastName: 'Smith',
+            emails: ['jane@example.com'],
+            phones: ['+9876543210'],
+            defaultShippingAddressId: 'addr-ship-1',
+            defaultBillingAddressId: 'addr-bill-1',
+            addresses: [
+              {
+                key: 'addr-ship-1',
+                addressType: 'Shipping',
+                firstName: 'Jane',
+                lastName: 'Smith',
+                line1: '456 Oak Ave',
+                city: 'Chicago',
+                regionName: 'IL',
+                postalCode: '60601',
+                countryName: 'US',
+                phone: '+9876543210',
+              },
+              {
+                key: 'addr-bill-1',
+                addressType: 'Billing',
+                firstName: 'Jane',
+                lastName: 'Smith',
+                line1: '789 Elm St',
+                city: 'Chicago',
+                regionName: 'IL',
+                postalCode: '60602',
+                countryName: 'US',
+              },
+            ],
+          },
+        });
+
+        // Mock catalog search (returns product)
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: { totalCount: 0, items: [] },
+        });
+
+        // Mock order creation
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-ADDR',
+            number: 'ORD-ADDR-001',
+            status: 'New',
+            customerId: 'CUST-002',
+            items: [{ id: 'LI-001', sku: 'PROD-001', name: 'Widget', quantity: 1, price: 10.0 }],
+            total: 10.0,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        const result = await adapter.createSalesOrder(inputWithoutAddress);
+        expect(result.success).toBe(true);
+
+        // Verify the payload includes the customer's default addresses
+        const createCall = postSpy.mock.calls.find(
+          ([url]) => url === '/api/order/customerOrders'
+        );
+        const payload = createCall![1];
+
+        expect(payload.addresses).toHaveLength(2);
+        expect(payload.addresses).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ addressType: 'Shipping', line1: '456 Oak Ave', city: 'Chicago' }),
+            expect.objectContaining({ addressType: 'Billing', line1: '789 Elm St', city: 'Chicago' }),
+          ])
+        );
+
+        // Verify shipment uses the default shipping address
+        expect(payload.shipments).toHaveLength(1);
+        expect(payload.shipments[0].deliveryAddress).toMatchObject({
+          addressType: 'Shipping',
+          line1: '456 Oak Ave',
+        });
+      });
+
+      it('should use resolved prices when unitPrice not provided', async () => {
+        const inputWithoutPrice: CreateSalesOrderInput = {
+          order: {
+            lineItems: [
+              { sku: 'SKU-A', quantity: 3, name: 'Product A' },
+              { sku: 'SKU-B', quantity: 1, name: 'Product B', unitPrice: 50.0 },
+            ],
+            customer: { id: 'CUST-003' },
+            currency: 'USD',
+          },
+        };
+
+        // Mock customer lookup
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: { id: 'CUST-003', firstName: 'Bob', lastName: 'Jones' },
+        });
+
+        // Mock catalog search — returns both products
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 2,
+            items: [
+              { id: 'pid-a', code: 'SKU-A', name: 'Product A' },
+              { id: 'pid-b', code: 'SKU-B', name: 'Product B' },
+            ],
+          },
+        });
+
+        // Mock pricing evaluate
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: [
+            { productId: 'pid-a', list: 25.0, sale: 20.0, currency: 'USD' },
+            { productId: 'pid-b', list: 55.0, sale: null, currency: 'USD' },
+          ],
+        });
+
+        // Mock order creation
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-PRICE',
+            number: 'ORD-PRICE-001',
+            status: 'New',
+            customerId: 'CUST-003',
+            items: [
+              { id: 'LI-A', sku: 'SKU-A', name: 'Product A', quantity: 3, price: 20.0 },
+              { id: 'LI-B', sku: 'SKU-B', name: 'Product B', quantity: 1, price: 50.0 },
+            ],
+            total: 110.0,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        const result = await adapter.createSalesOrder(inputWithoutPrice);
+        expect(result.success).toBe(true);
+
+        // Verify pricing API was called
+        const pricingCall = postSpy.mock.calls.find(
+          ([url]) => url === '/api/pricing/evaluate'
+        );
+        expect(pricingCall).toBeDefined();
+        expect(pricingCall![1].productIds).toEqual(['pid-a', 'pid-b']);
+
+        // Verify the payload uses resolved price for SKU-A and input price for SKU-B
+        const createCall = postSpy.mock.calls.find(
+          ([url]) => url === '/api/order/customerOrders'
+        );
+        const payload = createCall![1];
+
+        const itemA = payload.items.find((i: any) => i.sku === 'SKU-A');
+        expect(itemA.price).toBe(20.0); // sale price from pricing API
+        expect(itemA.placedPrice).toBe(20.0);
+
+        const itemB = payload.items.find((i: any) => i.sku === 'SKU-B');
+        expect(itemB.price).toBe(50.0); // input unitPrice takes precedence
+        expect(itemB.placedPrice).toBe(50.0);
+      });
+
+      it('should include payment document in order payload', async () => {
+        // Mock customer lookup
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: { id: 'CUST-001', firstName: 'John', lastName: 'Doe' },
+        });
+
+        // Mock catalog search
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: { totalCount: 0, items: [] },
+        });
+
+        // Mock order creation
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-PAY',
+            number: 'ORD-PAY-001',
+            status: 'New',
+            customerId: 'CUST-001',
+            items: [{ id: 'LI-001', sku: 'PROD-001', name: 'Test Product', quantity: 2, price: 29.99 }],
+            total: 57.48,
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        await adapter.createSalesOrder(validOrderInput);
+
+        const createCall = postSpy.mock.calls.find(
+          ([url]) => url === '/api/order/customerOrders'
+        );
+        const payload = createCall![1];
+
+        expect(payload.inPayments).toHaveLength(1);
+        const payment = payload.inPayments[0];
+        expect(payment).toMatchObject({
+          currency: 'USD',
+          price: 0,
+          sum: 0,
+          paymentStatus: 'New',
+          gatewayCode: 'DefaultManualPaymentMethod',
+          customerId: 'CUST-001',
+          customerName: 'John Doe',
+          objectType: 'PaymentIn',
+        });
+        expect(payment.paymentMethod).toMatchObject({
+          code: 'DefaultManualPaymentMethod',
+          name: 'Manual Payment',
+          paymentMethodType: 0,
+          isActive: true,
+        });
+        // Payment billing address should match order billing address
+        expect(payment.billingAddress).toBeDefined();
+        expect(payment.billingAddress.line1).toBe('123 Main St');
       });
     });
 
@@ -1788,6 +2054,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
     });
 
     it('should handle API errors with proper error codes', async () => {
+      getSpy.mockResolvedValue({ success: false });
       postSpy.mockResolvedValue({
         success: false,
         error: {

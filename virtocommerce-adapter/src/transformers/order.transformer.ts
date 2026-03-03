@@ -11,10 +11,24 @@ import type {
   UpdateOrderInput,
 } from '@virtocommerce/cof-mcp';
 import { STATUS_MAP, REVERSE_STATUS_MAP } from '../types.js';
-import type { CustomerOrder, LineItem, Shipment, ShipmentItem, DynamicObjectProperty, Contact } from '../models/index.js';
+import type {
+  CustomerOrder,
+  LineItem,
+  Shipment,
+  ShipmentItem,
+  DynamicObjectProperty,
+  Contact,
+  PaymentIn,
+  Address as VirtoAddress,
+} from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer } from './address.transformer.js';
 import { CustomerTransformer } from './customer.transformer.js';
+
+export interface CreateOrderEnrichment {
+  defaultShippingAddress?: VirtoAddress;
+  defaultBillingAddress?: VirtoAddress;
+}
 
 export class OrderTransformer extends BaseTransformer {
   private addressTransformer: AddressTransformer;
@@ -99,7 +113,8 @@ export class OrderTransformer extends BaseTransformer {
    */
   fromCreateSalesOrderInput(
     input: CreateSalesOrderInput,
-    skuProductMap?: Map<string, { id: string; name: string }>
+    skuProductMap?: Map<string, { id: string; name: string; price?: number }>,
+    enrichment?: CreateOrderEnrichment
   ): CustomerOrder {
     const order = input.order;
     if (!order) {
@@ -108,32 +123,41 @@ export class OrderTransformer extends BaseTransformer {
 
     const currency = order.currency ?? 'USD';
 
-    const addresses = [
-      order.shippingAddress
-        ? this.addressTransformer.toVirtoAddress(order.shippingAddress, 'Shipping')
-        : undefined,
-      order.billingAddress
-        ? this.addressTransformer.toVirtoAddress(order.billingAddress, 'Billing')
-        : undefined,
-    ].filter((a): a is NonNullable<typeof a> => a !== undefined);
+    // Use input addresses, fall back to enrichment defaults
+    const shippingAddress = order.shippingAddress
+      ? this.addressTransformer.toVirtoAddress(order.shippingAddress, 'Shipping')
+      : enrichment?.defaultShippingAddress
+        ? { ...enrichment.defaultShippingAddress, addressType: 'Shipping' as const }
+        : undefined;
+
+    const billingAddress = order.billingAddress
+      ? this.addressTransformer.toVirtoAddress(order.billingAddress, 'Billing')
+      : enrichment?.defaultBillingAddress
+        ? { ...enrichment.defaultBillingAddress, addressType: 'Billing' as const }
+        : undefined;
+
+    const addresses = [shippingAddress, billingAddress].filter(
+      (a): a is NonNullable<typeof a> => a !== undefined
+    );
 
     const items: LineItem[] =
       order.lineItems?.map((item) => {
         const resolved = skuProductMap?.get(item.sku);
+        const unitPrice = item.unitPrice ?? resolved?.price ?? 0;
         return {
           productId: resolved?.id,
           sku: item.sku,
           name: item.name ?? resolved?.name ?? item.sku,
           quantity: item.quantity ?? 0,
-          price: item.unitPrice ?? 0,
-          placedPrice: item.unitPrice ?? 0,
+          price: unitPrice,
+          placedPrice: unitPrice,
           currency,
           catalogId: this.catalogId,
         };
       }) ?? [];
 
     const hasShippingData =
-      order.shippingAddress ||
+      shippingAddress ||
       order.shippingCarrier ||
       order.shippingCode ||
       order.shippingClass ||
@@ -152,13 +176,11 @@ export class OrderTransformer extends BaseTransformer {
     const shipments: Shipment[] = hasShippingData
       ? [
           {
-          deliveryAddress: order.shippingAddress
-            ? this.addressTransformer.toVirtoAddress(order.shippingAddress, 'Shipping')
-            : undefined,
-          shipmentMethodCode: order.shippingCarrier ?? order.shippingCode,
-          shipmentMethodOption: order.shippingClass,
-          price: order.shippingPrice,
-          comment: shipmentComment,
+            deliveryAddress: shippingAddress,
+            shipmentMethodCode: order.shippingCarrier ?? order.shippingCode,
+            shipmentMethodOption: order.shippingClass,
+            price: order.shippingPrice,
+            comment: shipmentComment,
             currency,
             items: shipmentItems,
           },
@@ -171,6 +193,28 @@ export class OrderTransformer extends BaseTransformer {
         || order.customer.id
         || order.customer.externalId
       : undefined;
+
+    // Build payment document
+    // Note: PaymentIn.price is the payment method surcharge/fee, NOT the amount to be paid.
+    // VirtoCommerce calculates total = subTotal + shippingTotal + paymentTotal,
+    // so price must be 0 to avoid doubling the order total.
+    const payment: PaymentIn = {
+      currency,
+      price: 0,
+      sum: 0,
+      paymentStatus: 'New',
+      gatewayCode: 'DefaultManualPaymentMethod',
+      paymentMethod: {
+        code: 'DefaultManualPaymentMethod',
+        name: 'Manual Payment',
+        paymentMethodType: 0,
+        isActive: true,
+      },
+      billingAddress,
+      customerId: order.customer?.id ?? order.customer?.externalId,
+      customerName,
+      objectType: 'PaymentIn',
+    };
 
     return {
       outerId: order.externalId,
@@ -186,6 +230,7 @@ export class OrderTransformer extends BaseTransformer {
       items,
       addresses: addresses.length ? addresses : undefined,
       shipments: shipments.length ? shipments : undefined,
+      inPayments: [payment],
     };
   }
 

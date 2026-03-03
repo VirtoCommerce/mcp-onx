@@ -89,6 +89,11 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
 
     // Wire cross-service dependencies
     this.orderService.setProductService(this.productService);
+
+    // Set storeId on product service for pricing evaluation
+    if (this.options.workspace) {
+      this.productService.setStoreId(this.options.workspace);
+    }
   }
 
   // Lifecycle methods
@@ -281,6 +286,10 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
     if (options.workspace) {
       this.orderService.setWorkspace(options.workspace);
       this.fulfillmentService.setWorkspace(options.workspace);
+    }
+
+    if (options.workspace) {
+      this.productService.setStoreId(options.workspace);
     }
 
     if (options.catalogId) {

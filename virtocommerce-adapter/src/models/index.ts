@@ -116,6 +116,8 @@ export type {
   ListEntrySearchCriteria,
   ListEntryBase,
   ListEntrySearchResult,
+  PriceEvaluationContext,
+  EvaluatedPrice,
 } from './catalog.js';
 
 // Inventory models

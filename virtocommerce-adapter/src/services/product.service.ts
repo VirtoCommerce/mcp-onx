@@ -15,6 +15,8 @@ import type {
   ProductSearchResult,
   InventorySearchResult,
   InventorySearchCriteria,
+  PriceEvaluationContext,
+  EvaluatedPrice,
 } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { ProductTransformer } from '../transformers/product.transformer.js';
@@ -28,6 +30,7 @@ import { ApiClient } from '../utils/api-client.js';
 export class ProductService extends BaseService {
   private transformer: ProductTransformer;
   private catalogId?: string;
+  private storeId?: string;
 
   constructor(client: ApiClient, tenantId: string = 'default-workspace') {
     super(client);
@@ -40,6 +43,10 @@ export class ProductService extends BaseService {
 
   setCatalogId(catalogId: string): void {
     this.catalogId = catalogId;
+  }
+
+  setStoreId(storeId: string): void {
+    this.storeId = storeId;
   }
 
   async getProducts(input: GetProductsInput): Promise<FulfillmentToolResult<{ products: Product[] }>> {
@@ -75,12 +82,16 @@ export class ProductService extends BaseService {
   }
 
   /**
-   * Resolve SKU codes to a Map of code → { id, name } from the catalog
+   * Resolve SKU codes to a Map of code → { id, name, price? } from the catalog
    * via /api/catalog/search/products with searchPhrase and responseGroup=None.
+   * Optionally evaluates prices via /api/pricing/evaluate.
    * Public so other services (e.g. OrderService) can resolve SKUs to product info.
    */
-  async resolveSkuProductMap(skus: string[]): Promise<Map<string, { id: string; name: string }>> {
-    const map = new Map<string, { id: string; name: string }>();
+  async resolveSkuProductMap(
+    skus: string[],
+    options?: { currency?: string; customerId?: string }
+  ): Promise<Map<string, { id: string; name: string; price?: number }>> {
+    const map = new Map<string, { id: string; name: string; price?: number }>();
 
     const response = await this.client.post<ProductSearchResult>(
       '/api/catalog/search/products',
@@ -98,9 +109,45 @@ export class ProductService extends BaseService {
     }
 
     const items = response.data.items ?? [];
+    const productIdToCode = new Map<string, string>();
     for (const item of items) {
       if (item.id && item.code) {
         map.set(item.code, { id: item.id, name: item.name ?? '' });
+        productIdToCode.set(item.id, item.code);
+      }
+    }
+
+    // Evaluate prices only when options are provided (i.e. during order creation) — non-fatal on failure
+    if (options && productIdToCode.size > 0) {
+      try {
+        const priceContext: PriceEvaluationContext = {
+          productIds: Array.from(productIdToCode.keys()),
+          storeId: this.storeId,
+          catalogId: this.catalogId,
+          currency: options?.currency,
+          customerId: options?.customerId,
+        };
+
+        const priceResponse = await this.client.post<EvaluatedPrice[]>(
+          '/api/pricing/evaluate',
+          priceContext
+        );
+
+        if (priceResponse.success && Array.isArray(priceResponse.data)) {
+          for (const ep of priceResponse.data) {
+            if (!ep.productId) { continue; }
+            const code = productIdToCode.get(ep.productId);
+            if (!code) { continue; }
+            const existing = map.get(code);
+            if (!existing) { continue; }
+            const effectivePrice = ep.sale ?? ep.list;
+            if (effectivePrice != null) {
+              existing.price = effectivePrice;
+            }
+          }
+        }
+      } catch {
+    // Pricing failure is non-fatal — proceed without prices
       }
     }
 

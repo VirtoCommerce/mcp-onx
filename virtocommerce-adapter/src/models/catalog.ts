@@ -260,3 +260,26 @@ export interface ListEntrySearchResult {
   results?: ListEntryBase[];
   listEntries?: ListEntryBase[];
 }
+
+/**
+ * Context for evaluating product prices via /api/pricing/evaluate
+ */
+export interface PriceEvaluationContext {
+  storeId?: string;
+  catalogId?: string;
+  productIds?: string[];
+  currency?: string;
+  customerId?: string;
+  quantity?: number;
+}
+
+/**
+ * Evaluated price returned by the Pricing module
+ */
+export interface EvaluatedPrice {
+  productId?: string;
+  list?: number;
+  sale?: number | null;
+  currency?: string;
+  minQuantity?: number;
+}

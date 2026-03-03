@@ -15,6 +15,7 @@ import type {
   CustomerOrder,
   CustomerOrderSearchResult,
   CustomerOrderSearchCriteria,
+  Address as VirtoAddress,
 } from '../models/index.js';
 import { BaseService } from './base.service.js';
 import { OrderTransformer } from '../transformers/order.transformer.js';
@@ -67,6 +68,9 @@ export class OrderService extends BaseService {
 
       // Enrich customer data from VirtoCommerce if only ID was provided
       const customerId = customer.id ?? customer.externalId;
+      let defaultShippingAddress: VirtoAddress | undefined;
+      let defaultBillingAddress: VirtoAddress | undefined;
+
       if (customerId && this.customerService) {
         const contact = await this.customerService.getCustomerById(customerId);
         if (contact) {
@@ -75,18 +79,35 @@ export class OrderService extends BaseService {
           enriched.lastName = enriched.lastName || contact.lastName;
           enriched.email = enriched.email || contact.emails?.[0];
           enriched.phone = enriched.phone || contact.phones?.[0];
+
+          // Extract default addresses from Contact
+          if (contact.addresses?.length) {
+            defaultShippingAddress = contact.defaultShippingAddressId
+              ? contact.addresses.find((a) => a.key === contact.defaultShippingAddressId)
+              : contact.addresses.find((a) => a.addressType === 'Shipping' || a.addressType === 'BillingAndShipping');
+
+            defaultBillingAddress = contact.defaultBillingAddressId
+              ? contact.addresses.find((a) => a.key === contact.defaultBillingAddressId)
+              : contact.addresses.find((a) => a.addressType === 'Billing' || a.addressType === 'BillingAndShipping');
+          }
         }
       }
 
-      // Resolve SKUs to product info (id + name) before building the payload
+      // Resolve SKUs to product info (id + name + price) before building the payload
       const skus = input.order?.lineItems?.map((li) => li.sku).filter(Boolean) as string[] ?? [];
       const skuProductMap = skus.length && this.productService
-        ? await this.productService.resolveSkuProductMap(skus)
-        : new Map<string, { id: string; name: string }>();
+        ? await this.productService.resolveSkuProductMap(skus, {
+            currency: input.order?.currency ?? 'USD',
+            customerId,
+          })
+        : new Map<string, { id: string; name: string; price?: number }>();
 
       console.error(`[OrderService] Resolved SKUs to products: ${JSON.stringify(Object.fromEntries(skuProductMap))}`);
 
-      const payload = this.transformer.fromCreateSalesOrderInput(input, skuProductMap);
+      const payload = this.transformer.fromCreateSalesOrderInput(input, skuProductMap, {
+        defaultShippingAddress,
+        defaultBillingAddress,
+      });
       const response = await this.client.post<CustomerOrder>('/api/order/customerOrders', payload);
 
       if (!response.success || !response.data) {
