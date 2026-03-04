@@ -4,14 +4,14 @@
  * Run this after building your adapter: npm run build && node test-integration.js
  */
 
-import { YourFulfillmentAdapter } from './dist/index.js';
+import { VirtoCommerceFulfillmentAdapter } from './dist/index.js';
 
 async function test() {
   console.log('Testing adapter integration...\n');
 
   // Test 1: Can instantiate with config
   console.log('1. Testing instantiation with config object...');
-  const adapter1 = new YourFulfillmentAdapter({
+  const adapter1 = new VirtoCommerceFulfillmentAdapter({
     type: 'local',
     path: './dist/index.js',
     options: {
@@ -23,7 +23,7 @@ async function test() {
 
   // Test 2: Can instantiate with just options (fallback)
   console.log('2. Testing instantiation with options only...');
-  new YourFulfillmentAdapter({
+  new VirtoCommerceFulfillmentAdapter({
     apiUrl: 'https://test.api.com',
     apiKey: 'test-key',
   });
@@ -64,8 +64,8 @@ async function test() {
   const module = await import('./dist/index.js');
   const DefaultAdapter = module.default;
 
-  if (DefaultAdapter === YourFulfillmentAdapter) {
-    console.log('✓ Default export matches YourFulfillmentAdapter\n');
+  if (DefaultAdapter === VirtoCommerceFulfillmentAdapter) {
+    console.log('✓ Default export matches VirtoCommerceFulfillmentAdapter\n');
   } else {
     console.log('✗ Default export mismatch\n');
   }
@@ -76,7 +76,7 @@ async function test() {
     await adapter1.connect();
     console.log('✓ Connect method works\n');
   } catch (error) {
-    console.log(`✗ Connect failed: ${error.message}\n`);
+    console.log(`✗ Connect failed (expected without real API): ${error.message}\n`);
   }
 
   // Test 6: Health check
@@ -91,7 +91,7 @@ async function test() {
   console.log('Integration test complete!');
   console.log('\nYour adapter is compatible with the MCP server adapter factory.');
   console.log('You can now use it with:');
-  console.log('  ADAPTER_TYPE=local ADAPTER_PATH=../adapter-template/dist/index.js node dist/index.js');
+  console.log('  ADAPTER_TYPE=local ADAPTER_PATH=../virtocommerce-adapter/dist/index.js node dist/index.js');
 }
 
 test().catch(console.error);

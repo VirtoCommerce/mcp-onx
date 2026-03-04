@@ -1,6 +1,6 @@
 {
   "name": "@virtocommerce/cof-mcp",
-  "version": "0.5.2-alpha.0",
+  "version": "0.5.2-alpha.2",
   "description": "Commerce Operations Foundation MCP Server (Windows-compatible fork)",
   "type": "module",
   "main": "dist/index.js",
