@@ -1,6 +1,6 @@
 # Publishing Guide
 
-This guide explains how to publish and distribute your Fulfillment adapter.
+This guide explains how to publish and distribute the VirtoCommerce adapter.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This guide explains how to publish and distribute your Fulfillment adapter.
 
 ## For Fulfillment Vendors (NPM Package)
 
-If you're an Fulfillment vendor providing a public adapter package, follow these steps to publish to NPM.
+If you're a fulfillment vendor providing a public adapter package, follow these steps to publish to NPM.
 
 ### Prerequisites
 
@@ -28,7 +28,7 @@ If you're an Fulfillment vendor providing a public adapter package, follow these
 2. **Package Scope** (recommended)
    ```bash
    # Update package.json name
-   "name": "@yourcompany/uois-adapter-yourfulfillment"
+   "name": "@virtocommerce/mcp-onx"
    ```
 
 ### Step 1: Prepare for Publishing
@@ -37,20 +37,20 @@ If you're an Fulfillment vendor providing a public adapter package, follow these
 
    ```json
    {
-     "name": "@yourcompany/uois-adapter-yourfulfillment",
+     "name": "@virtocommerce/mcp-onx",
      "version": "1.0.0",
-     "description": "Order Network eXchange adapter for YourFulfillment",
-     "keywords": ["uois", "fulfillment", "adapter", "mcp", "yourfulfillment"],
-     "author": "Your Company <support@yourcompany.com>",
+     "description": "Order Network eXchange adapter for VirtoCommerce",
+     "keywords": ["onx", "fulfillment", "adapter", "mcp", "virtocommerce"],
+     "author": "VirtoCommerce <support@virtocommerce.com>",
      "license": "MIT",
      "repository": {
        "type": "git",
-       "url": "https://github.com/yourcompany/yourfulfillment-adapter"
+       "url": "https://github.com/VirtoCommerce/mcp-onx"
      },
      "bugs": {
-       "url": "https://github.com/yourcompany/yourfulfillment-adapter/issues"
+       "url": "https://github.com/VirtoCommerce/mcp-onx/issues"
      },
-     "homepage": "https://docs.yourfulfillment.com/adapter"
+     "homepage": "https://docs.virtocommerce.com/adapter"
    }
    ```
 
@@ -119,10 +119,10 @@ npm version prerelease --preid=beta
 
    ```bash
    # In a test directory
-   npm install @yourcompany/uois-adapter-yourfulfillment
+   npm install @virtocommerce/mcp-onx
 
-   # Check it works
-   node -e "import('@yourcompany/uois-adapter-yourfulfillment').then(m=>console.log(m.VERSION))"
+   # Check it works (ESM)
+   node -e "import('@virtocommerce/mcp-onx').then(m => console.log(Object.keys(m)))"
    ```
 
 2. **Create GitHub release**
@@ -167,15 +167,15 @@ If you're a retailer creating a custom adapter for internal use, follow these gu
 
    ```bash
    # Set registry for your scope
-   npm config set @yourcompany:registry https://npm.yourcompany.com
+   npm config set @virtocommerce:registry https://npm.example.com
 
    # Authenticate
-   npm login --registry https://npm.yourcompany.com
+   npm login --registry https://npm.example.com
    ```
 
 3. **Publish to private registry**
    ```bash
-   npm publish --registry https://npm.yourcompany.com
+   npm publish --registry https://npm.example.com
    ```
 
 ### Option 2: Git Repository
@@ -191,10 +191,10 @@ If you're a retailer creating a custom adapter for internal use, follow these gu
 
    ```bash
    # In your MCP server
-   npm install git+ssh://git@github.com:yourcompany/yourfulfillment-adapter.git#v1.0.0
+   npm install git+ssh://git@github.com:VirtoCommerce/mcp-onx.git#v1.0.0
 
    # Or using HTTPS
-   npm install git+https://github.com/yourcompany/yourfulfillment-adapter.git#v1.0.0
+   npm install git+https://github.com/VirtoCommerce/mcp-onx.git#v1.0.0
    ```
 
 ### Option 3: Local File System
@@ -202,7 +202,7 @@ If you're a retailer creating a custom adapter for internal use, follow these gu
 1. **Build the adapter**
 
    ```bash
-   cd yourfulfillment-adapter
+   cd virtocommerce-adapter
    npm run build
    ```
 
@@ -213,14 +213,14 @@ If you're a retailer creating a custom adapter for internal use, follow these gu
    npm link
 
    # In MCP server directory
-   npm link @yourcompany/uois-adapter-yourfulfillment
+   npm link @virtocommerce/mcp-onx
    ```
 
 3. **Or use file path**
    ```bash
    # In .env
    ADAPTER_TYPE=local
-   ADAPTER_PATH=../yourfulfillment-adapter/dist/index.js
+   ADAPTER_PATH=../virtocommerce-adapter/dist/index.js
    ```
 
 ### CI/CD Pipeline
@@ -239,12 +239,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Install dependencies
         run: npm ci
@@ -259,7 +259,7 @@ jobs:
         run: npm pack
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: adapter-package
           path: '*.tgz'
@@ -336,12 +336,12 @@ npm test -- --watch
 Test with actual MCP server:
 
 ```javascript
-// test/integration.test.js
-const { YourFulfillmentAdapter } = require('../dist/index.js');
+// test/integration.test.mjs
+import { VirtoCommerceFulfillmentAdapter } from '../dist/index.js';
 
 describe('Integration Tests', () => {
   it('should work with MCP server', async () => {
-    const adapter = new YourFulfillmentAdapter({
+    const adapter = new VirtoCommerceFulfillmentAdapter({
       apiUrl: process.env.TEST_API_URL,
       apiKey: process.env.TEST_API_KEY,
     });
@@ -367,11 +367,11 @@ describe('Integration Tests', () => {
 
 ### 4. Compatibility Testing
 
-Test with different versions:
+Test with supported versions:
 
-- Node.js versions (14, 16, 18, 20)
+- Node.js versions (20, 22)
 - MCP server versions
-- Your Fulfillment API versions
+- VirtoCommerce Platform API versions
 
 ## Documentation Requirements
 
@@ -495,7 +495,7 @@ None in this release
 ## Upgrade Instructions
 
 ```bash
-npm update @yourcompany/uois-adapter-yourfulfillment
+npm update @virtocommerce/mcp-onx
 ```
 ````
 
@@ -513,8 +513,8 @@ Thanks to @user1, @user2 for their contributions!
 
 1. **NPM Statistics**
    ```bash
-   npm view @yourcompany/uois-adapter-yourfulfillment
-   npm info @yourcompany/uois-adapter-yourfulfillment versions
+   npm view @virtocommerce/mcp-onx
+   npm info @virtocommerce/mcp-onx versions
 ````
 
 2. **Download Statistics**
@@ -524,7 +524,7 @@ Thanks to @user1, @user2 for their contributions!
 
 3. **Deprecating Old Versions**
    ```bash
-   npm deprecate @yourcompany/uois-adapter-yourfulfillment@"< 1.0.0" "Please upgrade to v1.0.0 or higher"
+   npm deprecate @virtocommerce/mcp-onx@"< 1.0.0" "Please upgrade to v1.0.0 or higher"
    ```
 
 ## Quick Publish Checklist
@@ -555,7 +555,7 @@ Before publishing, ensure:
 
 2. **Package Name Taken**
 
-   - Use scoped packages: `@yourcompany/package-name`
+   - Use scoped packages: `@virtocommerce/mcp-onx`
 
 3. **Missing Files**
 
