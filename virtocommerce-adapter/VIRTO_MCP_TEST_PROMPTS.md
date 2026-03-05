@@ -257,8 +257,9 @@ Update order ORDER-LA-001 with express shipping
 ### 10. Return Order Tool
 
 ```
-Process a return for order TEST-ORDER-007 - customer says the coffee tastes bad
+Process a return for order ORDER-B2B-002 - customer says the coffee tastes bad
 ```
+:white_check_mark: Passed - creates return for order ORDER-B2B-002 with reason "customer says the coffee tastes bad"
 
 ```
 Create a return for order WEB-2024-1002 with reason "damaged during shipping"
