@@ -3,7 +3,6 @@
  */
 
 import type { Customer } from '@virtocommerce/cof-mcp';
-import type { YourFulfillmentCustomer } from '../types.js';
 import type { CustomerOrder, Contact, Address } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 import { AddressTransformer, type CountryEntry } from './address.transformer.js';
@@ -59,25 +58,6 @@ export class CustomerTransformer extends BaseTransformer {
   }
 
   /**
-   * Transform YourFulfillment customer format to MCP Customer
-   */
-  toMcpCustomer(customer: YourFulfillmentCustomer): Customer {
-    return {
-      id: customer.id,
-      firstName: customer.first_name,
-      lastName: customer.last_name,
-      phone: customer.phone,
-      addresses: this.addressTransformer.toCustomerAddresses(customer.addresses as any),
-      tags: customer.tags,
-      createdAt: customer.created_at ?? this.now(),
-      updatedAt: customer.updated_at ?? this.now(),
-      tenantId: this.tenantId,
-      status: 'active',
-      type: 'customer',
-    };
-  }
-
-  /**
    * Create a minimal customer from order data (fallback when customer not found)
    */
   fromOrder(order: CustomerOrder): Customer {
@@ -97,13 +77,6 @@ export class CustomerTransformer extends BaseTransformer {
       status: 'active',
       type: 'customer',
     };
-  }
-
-  /**
-   * Transform multiple customers
-   */
-  toMcpCustomers(customers: YourFulfillmentCustomer[]): Customer[] {
-    return customers.map((customer) => this.toMcpCustomer(customer));
   }
 
   /**

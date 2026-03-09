@@ -10,7 +10,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
-import type { YourFulfillmentApiResponse } from '../types.js';
+import type { ApiResponse } from '../types.js';
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -104,7 +104,7 @@ export class ApiClient {
   /**
    * GET request
    */
-  async get<T = unknown>(path: string, params?: unknown): Promise<YourFulfillmentApiResponse<T>> {
+  async get<T = unknown>(path: string, params?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>({
       method: 'GET',
       url: path,
@@ -115,7 +115,7 @@ export class ApiClient {
   /**
    * POST request
    */
-  async post<T = unknown>(path: string, data?: unknown, params?: unknown): Promise<YourFulfillmentApiResponse<T>> {
+  async post<T = unknown>(path: string, data?: unknown, params?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>({
       method: 'POST',
       url: path,
@@ -127,7 +127,7 @@ export class ApiClient {
   /**
    * PUT request
    */
-  async put<T = unknown>(path: string, data?: unknown, params?: unknown): Promise<YourFulfillmentApiResponse<T>> {
+  async put<T = unknown>(path: string, data?: unknown, params?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>({
       method: 'PUT',
       url: path,
@@ -139,7 +139,7 @@ export class ApiClient {
   /**
    * PATCH request
    */
-  async patch<T = unknown>(path: string, data?: unknown, params?: unknown): Promise<YourFulfillmentApiResponse<T>> {
+  async patch<T = unknown>(path: string, data?: unknown, params?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>({
       method: 'PATCH',
       url: path,
@@ -151,7 +151,7 @@ export class ApiClient {
   /**
    * DELETE request
    */
-  async delete<T = unknown>(path: string, params?: unknown): Promise<YourFulfillmentApiResponse<T>> {
+  async delete<T = unknown>(path: string, params?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>({
       method: 'DELETE',
       url: path,
@@ -162,7 +162,7 @@ export class ApiClient {
   /**
    * Generic request method with retry logic
    */
-  private async request<T>(config: AxiosRequestConfig, attempt = 1): Promise<YourFulfillmentApiResponse<T>> {
+  private async request<T>(config: AxiosRequestConfig, attempt = 1): Promise<ApiResponse<T>> {
     try {
       const response = await this.client.request(config);
 
@@ -195,7 +195,7 @@ export class ApiClient {
     error: AxiosError,
     config: AxiosRequestConfig,
     attempt: number
-  ): Promise<YourFulfillmentApiResponse<T>> {
+  ): Promise<ApiResponse<T>> {
     const status = error.response?.status;
 
     // Determine if we should retry

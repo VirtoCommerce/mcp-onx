@@ -3,7 +3,6 @@
  */
 
 import type { Address, CustomerAddress } from '@virtocommerce/cof-mcp';
-import type { YourFulfillmentAddress } from '../types.js';
 import type { Address as VirtoAddress } from '../models/index.js';
 import { BaseTransformer } from './base.js';
 
@@ -53,28 +52,6 @@ export class AddressTransformer extends BaseTransformer {
 
     // No match — pass as-is in countryName
     return { countryName: country };
-  }
-
-  /**
-   * Transform MCP Address to VirtoCommerce address format
-   */
-  toFulfillmentAddress(address?: Address): YourFulfillmentAddress | undefined {
-    if (!address) {
-      return undefined;
-    }
-
-    return {
-      street1: address.address1 ?? '',
-      street2: address.address2,
-      city: address.city ?? '',
-      state: address.stateOrProvince ?? '',
-      postal_code: address.zipCodeOrPostalCode ?? '',
-      country: address.country ?? '',
-      phone: address.phone,
-      email: address.email,
-      name: this.composeName(address.firstName, address.lastName),
-      company: address.company,
-    };
   }
 
   /**
