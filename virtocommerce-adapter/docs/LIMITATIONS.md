@@ -40,11 +40,11 @@ The MCP test prompts reference a dedicated "Hold Order" tool for placing and rel
 
 ### Status mapping
 
-| MCP Status | VirtoCommerce Status |
-| ---------- | -------------------- |
-| `on_hold`  | `OnHold`             |
-| `processing` | `Processing`       |
-| `pending`  | `New`                |
+| MCP Status   | VirtoCommerce Status |
+| ------------ | -------------------- |
+| `on_hold`    | `OnHold`             |
+| `processing` | `Processing`         |
+| `pending`    | `New`                |
 
 A dedicated `hold-order` tool may be added in a future release if additional hold-specific logic is required (e.g., hold reason tracking, automatic hold expiration).
 
@@ -75,12 +75,17 @@ The MCP test prompts reference a "Reserve Inventory" tool for creating and relea
 
 ---
 
-## Split Order Tool
+## Fulfillment (Shipment) Status Filtering
 
-**Status**: Not implemented. Referenced in test prompts but not yet designed.
+**Status**: By design — VirtoCommerce shipment search API does not support status filtering.
 
-Splitting an order into multiple shipments for multi-warehouse fulfillment is mentioned in the v1.1.0 roadmap. This would require:
+The `get-fulfillments` tool accepts a `statuses` filter parameter, but the VirtoCommerce endpoint `POST /api/order/shipments/search` does not support filtering by status server-side. The `mapFulfillmentFiltersToSearchCriteria` mapper intentionally does not map `statuses` to the search criteria.
 
-- A new `split-order` MCP tool
-- Logic to create multiple shipments from a single order's line items
-- Potentially a new VirtoCommerce API endpoint or use of existing shipment creation endpoints
+### Impact
+
+- When `statuses` is passed to `get-fulfillments`, **all** shipments matching other criteria (order ID, date range) are returned regardless of status.
+- Client-side status filtering is **not currently implemented** for fulfillments (unlike returns, which do have client-side post-filtering).
+
+### Workaround
+
+Filter fulfillments by status in the AI agent's logic after receiving results from `get-fulfillments`. The `status` field is present on each returned fulfillment object.
