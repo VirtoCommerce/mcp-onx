@@ -33,11 +33,16 @@ export class OrderService extends BaseService {
   private productService?: ProductService;
   private workspace?: string;
 
-  constructor(client: ApiClient, tenantId: string = 'default-workspace', workspace?: string) {
+  constructor(
+    client: ApiClient,
+    tenantId: string = 'default-workspace',
+    workspace?: string,
+    customerService?: CustomerService
+  ) {
     super(client);
     this.workspace = workspace;
     this.transformer = new OrderTransformer(tenantId, workspace);
-    this.customerService = new CustomerService(client, tenantId);
+    this.customerService = customerService ?? new CustomerService(client, tenantId);
   }
 
   setProductService(productService: ProductService): void {
@@ -46,7 +51,6 @@ export class OrderService extends BaseService {
 
   setTenantId(tenantId: string): void {
     this.transformer.setTenantId(tenantId);
-    this.customerService.setTenantId(tenantId);
   }
 
   setWorkspace(workspace: string): void {

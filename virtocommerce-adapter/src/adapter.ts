@@ -90,9 +90,10 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
 
     const tenantId = this.getTenantId();
 
-    // Initialize services
-    this.orderService = new OrderService(this.client, tenantId, this.options.workspace);
+    // Initialize services — CustomerService is created first and shared with OrderService
+    // to ensure countries data (loaded during connect()) propagates to order enrichment.
     this.customerService = new CustomerService(this.client, tenantId);
+    this.orderService = new OrderService(this.client, tenantId, this.options.workspace, this.customerService);
     this.fulfillmentService = new FulfillmentService(this.client, tenantId, this.options.workspace);
     this.productService = new ProductService(this.client, tenantId);
     this.returnService = new ReturnService(this.client, tenantId);

@@ -84,6 +84,29 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
 
         await expect(adapter.connect()).rejects.toThrow('Connection failed');
       });
+
+      it('should share CustomerService between adapter and OrderService so countries propagate', async () => {
+        // Simulate connect: health → store → countries
+        getSpy.mockImplementation(async (path: string) => {
+          if (path === '/health') {
+            return { success: true, data: { status: 'healthy' } };
+          }
+          if (path.startsWith('/api/stores/')) {
+            return { success: true, data: { id: 'test-workspace', name: 'Test', catalog: 'cat1' } };
+          }
+          if (path === '/api/platform/common/countries') {
+            return { success: true, data: [{ id: 'US', name: 'United States' }] };
+          }
+          return { success: true, data: {} };
+        });
+
+        await adapter.connect();
+
+        // The OrderService's internal customerService should be the same instance as the adapter's
+        const adapterCustomerService = (adapter as any).customerService;
+        const orderServiceCustomerService = (adapter as any).orderService.customerService;
+        expect(orderServiceCustomerService).toBe(adapterCustomerService);
+      });
     });
 
     describe('disconnect', () => {
