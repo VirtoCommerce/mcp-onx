@@ -307,9 +307,14 @@ export function mapReturnFiltersToSearchCriteria(input: GetReturnsInput): Return
   );
 
   const pageSize = input.pageSize ?? 20;
-  criteria.skip = input.skip ?? 0;
-  // Inflate take when post-filtering is needed to ensure enough results
-  criteria.take = needsPostFilter ? Math.max(pageSize, 100) : pageSize;
+  if (needsPostFilter) {
+    // When post-filtering, fetch from the beginning and let the service handle pagination
+    criteria.skip = 0;
+    criteria.take = Math.max(pageSize + (input.skip ?? 0), 100);
+  } else {
+    criteria.skip = input.skip ?? 0;
+    criteria.take = pageSize;
+  }
 
   return criteria;
 }

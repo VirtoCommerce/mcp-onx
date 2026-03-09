@@ -2338,6 +2338,43 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         }
       });
 
+      it('should not double-apply skip when post-filtering is needed', async () => {
+        // Return 3 items from API, 2 of which match the status filter
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 3,
+            results: [
+              { id: 'RET-001', orderId: 'O1', status: 'Completed', lineItems: [], createdDate: '2024-01-01T00:00:00Z', modifiedDate: '2024-01-01T00:00:00Z' },
+              { id: 'RET-002', orderId: 'O1', status: 'New', lineItems: [], createdDate: '2024-01-02T00:00:00Z', modifiedDate: '2024-01-02T00:00:00Z' },
+              { id: 'RET-003', orderId: 'O1', status: 'Completed', lineItems: [], createdDate: '2024-01-03T00:00:00Z', modifiedDate: '2024-01-03T00:00:00Z' },
+            ],
+          },
+        });
+
+        getSpy.mockResolvedValue({ success: true, data: { id: 'O1', items: [] } });
+
+        // Request skip=1, pageSize=1 with status filter → should get RET-003 (2nd completed)
+        const result = await adapter.getReturns({
+          orderIds: ['O1'],
+          statuses: ['completed'],
+          skip: 1,
+          pageSize: 1,
+        });
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.returns).toHaveLength(1);
+          expect(result.returns[0]?.id).toBe('RET-003');
+        }
+
+        // Verify the API received skip=0 (not the user's skip=1)
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/return/search',
+          expect.objectContaining({ skip: 0 })
+        );
+      });
+
       it('should handle search failure', async () => {
         postSpy.mockResolvedValueOnce({
           success: false,

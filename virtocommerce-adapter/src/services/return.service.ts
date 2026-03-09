@@ -147,10 +147,13 @@ export class ReturnService extends BaseService {
     // Apply client-side post-filters
     let filtered = this.applyPostFilters(vcReturns, input);
 
-    // Apply pagination to filtered results
-    const pageSize = input.pageSize ?? 20;
-    const skip = input.skip ?? 0;
-    filtered = filtered.slice(skip, skip + pageSize);
+    // Apply client-side pagination only when post-filtering was needed
+    // (otherwise the API already handled skip/take correctly)
+    if (this.needsPostFilter(input)) {
+      const pageSize = input.pageSize ?? 20;
+      const skip = input.skip ?? 0;
+      filtered = filtered.slice(skip, skip + pageSize);
+    }
 
     // Collect unique orderIds for SKU resolution
     const orderIds = new Set<string>();
@@ -222,6 +225,22 @@ export class ReturnService extends BaseService {
     }
 
     return results;
+  }
+
+  /**
+   * Determine whether client-side post-filtering is needed for the given input.
+   * Mirrors the logic in mapReturnFiltersToSearchCriteria.
+   */
+  private needsPostFilter(input: GetReturnsInput): boolean {
+    return !!(
+      input.statuses?.length ||
+      input.outcomes?.length ||
+      (input.returnNumbers && input.returnNumbers.length > 1) ||
+      input.createdAtMin ||
+      input.createdAtMax ||
+      input.updatedAtMin ||
+      input.updatedAtMax
+    );
   }
 
   /**
