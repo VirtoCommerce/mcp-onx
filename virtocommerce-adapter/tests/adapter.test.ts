@@ -13,12 +13,15 @@ import type {
   CreateSalesOrderInput,
   CancelOrderInput,
   UpdateOrderInput,
+  FulfillOrderInput,
+  CreateReturnInput,
   GetOrdersInput,
   GetInventoryInput,
   GetCustomersInput,
   GetProductsInput,
   GetProductVariantsInput,
   GetFulfillmentsInput,
+  GetReturnsInput,
 } from '@virtocommerce/cof-mcp';
 
 function readResponse(path: string) {
@@ -911,6 +914,274 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
         expect(result.success).toBe(false);
         if (!result.success) {
           expect(result.message).toContain('Failed to update order');
+        }
+      });
+    });
+
+    describe('fulfillOrder', () => {
+      it('should create a shipment for an order', async () => {
+        // GET current order
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            number: 'ORD-001',
+            status: 'Processing',
+            currency: 'USD',
+            items: [
+              { id: 'LI-001', sku: 'BOLT-SM', name: 'Small Bolt', quantity: 5, price: 10 },
+              { id: 'LI-002', sku: 'NUT-LG', name: 'Large Nut', quantity: 3, price: 5 },
+            ],
+            shipments: [],
+          },
+        });
+
+        // PUT save
+        putSpy.mockResolvedValueOnce({ success: true });
+
+        // GET refetch after save
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            shipments: [
+              {
+                id: 'SHIP-NEW',
+                customerOrderId: 'ORDER-001',
+                status: 'New',
+                trackingNumber: 'TRACK-123',
+                shipmentMethodCode: 'FedEx',
+                fulfillmentCenterId: 'WH-01',
+                items: [
+                  { lineItemId: 'LI-001', quantity: 5, lineItem: { sku: 'BOLT-SM', name: 'Small Bolt' } },
+                ],
+                createdDate: '2024-01-15T00:00:00Z',
+                modifiedDate: '2024-01-15T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const input: FulfillOrderInput = {
+          orderId: 'ORDER-001',
+          lineItems: [{ sku: 'BOLT-SM', quantity: 5 }],
+          trackingNumbers: ['TRACK-123'],
+          shippingCarrier: 'FedEx',
+          locationId: 'WH-01',
+        };
+
+        const result = await adapter.fulfillOrder(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.fulfillment.id).toBe('SHIP-NEW');
+          expect(result.fulfillment.orderId).toBe('ORDER-001');
+          expect(result.fulfillment.status).toBe('pending');
+          expect(result.fulfillment.trackingNumbers).toEqual(['TRACK-123']);
+          expect(result.fulfillment.lineItems).toHaveLength(1);
+          expect(result.fulfillment.lineItems[0]?.sku).toBe('BOLT-SM');
+        }
+
+        expect(getSpy).toHaveBeenCalledWith('/api/order/customerOrders/ORDER-001');
+        expect(putSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders',
+          expect.objectContaining({
+            id: 'ORDER-001',
+            shipments: expect.arrayContaining([
+              expect.objectContaining({ shipmentMethodCode: 'FedEx' }),
+            ]),
+          })
+        );
+      });
+
+      it('should fail when orderId is missing', async () => {
+        const input: FulfillOrderInput = {
+          orderId: '',
+          lineItems: [{ sku: 'BOLT-SM', quantity: 1 }],
+          trackingNumbers: [],
+        };
+
+        const result = await adapter.fulfillOrder(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('orderId is required');
+        }
+      });
+
+      it('should fail when order is not found', async () => {
+        getSpy.mockResolvedValueOnce({ success: false });
+
+        const input: FulfillOrderInput = {
+          orderId: 'NON-EXISTENT',
+          lineItems: [{ sku: 'BOLT-SM', quantity: 1 }],
+          trackingNumbers: [],
+        };
+
+        const result = await adapter.fulfillOrder(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('Order not found');
+        }
+      });
+
+      it('should fail when PUT save fails', async () => {
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            items: [{ id: 'LI-001', sku: 'BOLT-SM', quantity: 5 }],
+            shipments: [],
+          },
+        });
+
+        putSpy.mockResolvedValueOnce({ success: false, error: 'Save failed' });
+
+        const input: FulfillOrderInput = {
+          orderId: 'ORDER-001',
+          lineItems: [{ sku: 'BOLT-SM', quantity: 5 }],
+          trackingNumbers: [],
+        };
+
+        const result = await adapter.fulfillOrder(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('Failed to create fulfillment');
+        }
+      });
+    });
+
+    describe('createReturn', () => {
+      it('should create a return for an order', async () => {
+        // GET order for line item resolution
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            items: [
+              { id: 'LI-001', sku: 'BOLT-SM', name: 'Small Bolt', price: 10 },
+              { id: 'LI-002', sku: 'NUT-LG', name: 'Large Nut', price: 5 },
+            ],
+          },
+        });
+
+        // PUT /api/return/
+        putSpy.mockResolvedValueOnce({
+          success: true,
+          data: { id: 'RET-001' },
+        });
+
+        // GET /api/return/RET-001
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'RET-001',
+            number: 'RET-2024-001',
+            orderId: 'ORDER-001',
+            status: 'New',
+            resolution: '',
+            lineItems: [
+              { id: 'RLI-001', orderLineItemId: 'LI-001', quantity: 2, reason: 'Defective', price: 10 },
+            ],
+            createdDate: '2024-01-20T00:00:00Z',
+            modifiedDate: '2024-01-20T00:00:00Z',
+          },
+        });
+
+        const input: CreateReturnInput = {
+          return: {
+            orderId: 'ORDER-001',
+            outcome: '',
+            returnLineItems: [
+              { orderLineItemId: 'LI-001', sku: 'BOLT-SM', quantityReturned: 2, returnReason: 'Defective' },
+            ],
+          },
+        };
+
+        const result = await adapter.createReturn(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.return.id).toBe('RET-001');
+          expect(result.return.returnNumber).toBe('RET-2024-001');
+          expect(result.return.orderId).toBe('ORDER-001');
+          expect(result.return.status).toBe('requested');
+          expect(result.return.returnLineItems).toHaveLength(1);
+          expect(result.return.returnLineItems[0]?.sku).toBe('BOLT-SM');
+          expect(result.return.returnLineItems[0]?.quantityReturned).toBe(2);
+        }
+
+        expect(putSpy).toHaveBeenCalledWith(
+          '/api/return/',
+          expect.objectContaining({
+            orderId: 'ORDER-001',
+            status: 'New',
+            lineItems: expect.arrayContaining([
+              expect.objectContaining({ orderLineItemId: 'LI-001', quantity: 2, reason: 'Defective' }),
+            ]),
+          })
+        );
+      });
+
+      it('should fail when orderId is missing', async () => {
+        const input: CreateReturnInput = {
+          return: {
+            orderId: '',
+            outcome: '',
+            returnLineItems: [{ orderLineItemId: 'LI-001', sku: 'X', quantityReturned: 1, returnReason: 'Broken' }],
+          },
+        };
+
+        const result = await adapter.createReturn(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('orderId is required');
+        }
+      });
+
+      it('should fail when order is not found', async () => {
+        getSpy.mockResolvedValueOnce({ success: false });
+
+        const input: CreateReturnInput = {
+          return: {
+            orderId: 'BAD-ORDER',
+            outcome: '',
+            returnLineItems: [{ orderLineItemId: 'LI-001', sku: 'X', quantityReturned: 1, returnReason: 'Broken' }],
+          },
+        };
+
+        const result = await adapter.createReturn(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('Order not found');
+        }
+      });
+
+      it('should fail when PUT save fails', async () => {
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: { id: 'ORDER-001', items: [{ id: 'LI-001', sku: 'X', price: 10 }] },
+        });
+
+        putSpy.mockResolvedValueOnce({ success: false, error: 'Save failed' });
+
+        const input: CreateReturnInput = {
+          return: {
+            orderId: 'ORDER-001',
+            outcome: '',
+            returnLineItems: [{ orderLineItemId: 'LI-001', sku: 'X', quantityReturned: 1, returnReason: 'Broken' }],
+          },
+        };
+
+        const result = await adapter.createReturn(input);
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('Failed to create return');
         }
       });
     });
@@ -1924,6 +2195,129 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.fulfillments[0]?.status).toBe('ready_to_send');
           expect(result.fulfillments[1]?.status).toBe('delivered');
           expect(result.fulfillments[2]?.status).toBe('processing');
+        }
+      });
+    });
+
+    describe('getReturns', () => {
+      it('should get returns by order ID', async () => {
+        // POST /api/return/search
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'RET-001',
+                number: 'RET-2024-001',
+                orderId: 'ORDER-001',
+                status: 'New',
+                resolution: 'Exchange',
+                lineItems: [
+                  { id: 'RLI-001', orderLineItemId: 'LI-001', quantity: 2, reason: 'Defective', price: 10 },
+                ],
+                createdDate: '2024-01-20T00:00:00Z',
+                modifiedDate: '2024-01-20T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        // GET order for SKU enrichment
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-001',
+            items: [
+              { id: 'LI-001', sku: 'BOLT-SM', name: 'Small Bolt', price: 10 },
+            ],
+          },
+        });
+
+        const input: GetReturnsInput = {
+          orderIds: ['ORDER-001'],
+        };
+
+        const result = await adapter.getReturns(input);
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.returns).toHaveLength(1);
+          expect(result.returns[0]?.id).toBe('RET-001');
+          expect(result.returns[0]?.orderId).toBe('ORDER-001');
+          expect(result.returns[0]?.status).toBe('requested');
+          expect(result.returns[0]?.outcome).toBe('Exchange');
+          expect(result.returns[0]?.returnLineItems[0]?.sku).toBe('BOLT-SM');
+          expect(result.returns[0]?.returnLineItems[0]?.quantityReturned).toBe(2);
+        }
+
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/return/search',
+          expect.objectContaining({ orderId: 'ORDER-001' })
+        );
+      });
+
+      it('should handle empty results', async () => {
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: { totalCount: 0, results: [] },
+        });
+
+        const result = await adapter.getReturns({ orderIds: ['ORDER-NONE'] });
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.returns).toHaveLength(0);
+        }
+      });
+
+      it('should filter returns by status client-side', async () => {
+        postSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            totalCount: 2,
+            results: [
+              {
+                id: 'RET-001', orderId: 'ORDER-001', status: 'New', lineItems: [],
+                createdDate: '2024-01-20T00:00:00Z', modifiedDate: '2024-01-20T00:00:00Z',
+              },
+              {
+                id: 'RET-002', orderId: 'ORDER-001', status: 'Completed', lineItems: [],
+                createdDate: '2024-01-21T00:00:00Z', modifiedDate: '2024-01-21T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        // GET order for enrichment (called once for ORDER-001)
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: { id: 'ORDER-001', items: [] },
+        });
+
+        const result = await adapter.getReturns({
+          orderIds: ['ORDER-001'],
+          statuses: ['completed'],
+        });
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.returns).toHaveLength(1);
+          expect(result.returns[0]?.id).toBe('RET-002');
+        }
+      });
+
+      it('should handle search failure', async () => {
+        postSpy.mockResolvedValueOnce({
+          success: false,
+          error: 'Search failed',
+        });
+
+        const result = await adapter.getReturns({ orderIds: ['ORDER-001'] });
+
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.message).toContain('Failed to fetch returns');
         }
       });
     });
