@@ -30,11 +30,6 @@ export function mapOrderFiltersToSearchCriteria(input: GetOrdersInput): Customer
     criteria.outerIds = input.externalIds;
   }
 
-  // Map external IDs to numbers (VirtoCommerce uses 'numbers' for order numbers)
-  if (input.externalIds?.length) {
-    criteria.numbers = input.externalIds;
-  }
-
   // Map statuses: convert MCP normalized statuses to VirtoCommerce PascalCase
   if (input.statuses?.length) {
     criteria.statuses = input.statuses.map((s) => REVERSE_STATUS_MAP[s] ?? s);
@@ -42,7 +37,7 @@ export function mapOrderFiltersToSearchCriteria(input: GetOrdersInput): Customer
 
   // Map names (order numbers)
   if (input.names?.length) {
-    criteria.numbers = [...(criteria.numbers ?? []), ...input.names];
+    criteria.numbers = input.names;
   }
 
   // Map date filters

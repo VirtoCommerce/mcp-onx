@@ -946,6 +946,14 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.orders).toHaveLength(1);
           expect(result.orders[0]?.externalId).toBe('EXT-001');
         }
+
+        // externalIds should map to outerIds only, not to numbers
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders/search',
+          expect.objectContaining({ outerIds: ['EXT-001'] })
+        );
+        const searchCriteria = postSpy.mock.calls[0]?.[1];
+        expect(searchCriteria).not.toHaveProperty('numbers');
       });
 
       it('should handle empty results', async () => {
