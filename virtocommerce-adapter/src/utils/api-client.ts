@@ -202,8 +202,8 @@ export class ApiClient {
     const shouldRetry = this.shouldRetry(status, attempt);
 
     if (shouldRetry) {
-      // Wait before retrying (exponential backoff)
-      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+      // Use Retry-After header when available (429 responses), otherwise exponential backoff
+      const delay = this.getRetryDelay(error, attempt);
       if (this.debugMode) {
         console.error(`[API Retry] Attempt ${attempt + 1}/${this.retryAttempts} after ${delay}ms`);
       }
@@ -256,6 +256,30 @@ export class ApiClient {
     ];
 
     return retryableStatuses.includes(status);
+  }
+
+  /**
+   * Calculate retry delay, honoring Retry-After header for 429 responses.
+   * Retry-After can be seconds (integer) or an HTTP-date.
+   * Falls back to exponential backoff when the header is absent.
+   */
+  private getRetryDelay(error: AxiosError, attempt: number): number {
+    const retryAfter = error.response?.headers?.['retry-after'];
+    if (retryAfter) {
+      const seconds = Number(retryAfter);
+      if (!isNaN(seconds) && seconds >= 0) {
+        // Cap at 60s to avoid unreasonably long waits
+        return Math.min(seconds * 1000, 60000);
+      }
+      // Try parsing as HTTP-date (e.g. "Wed, 21 Oct 2015 07:28:00 GMT")
+      const date = new Date(retryAfter);
+      if (!isNaN(date.getTime())) {
+        const delayMs = date.getTime() - Date.now();
+        return Math.min(Math.max(delayMs, 0), 60000);
+      }
+    }
+    // Default: exponential backoff capped at 10s
+    return Math.min(1000 * Math.pow(2, attempt - 1), 10000);
   }
 
   /**
