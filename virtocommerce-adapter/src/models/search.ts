@@ -59,8 +59,7 @@ export interface CustomerOrderSearchCriteria extends SearchCriteriaBase {
 /**
  * Customer order search result
  */
-export interface CustomerOrderSearchResult extends SearchResult<CustomerOrder> {
-}
+export type CustomerOrderSearchResult = SearchResult<CustomerOrder>;
 
 /**
  * Member search criteria
@@ -79,8 +78,7 @@ export interface MemberSearchCriteria extends SearchCriteriaBase {
 /**
  * Member search result
  */
-export interface MemberSearchResult extends SearchResult<Member> {
-}
+export type MemberSearchResult = SearchResult<Member>;
 
 /**
  * Contact search criteria
@@ -93,8 +91,7 @@ export interface ContactSearchCriteria extends MemberSearchCriteria {
 /**
  * Contact search result
  */
-export interface ContactSearchResult extends SearchResult<Contact> {
-}
+export type ContactSearchResult = SearchResult<Contact>;
 
 /**
  * Organization search criteria
@@ -106,8 +103,7 @@ export interface OrganizationSearchCriteria extends MemberSearchCriteria {
 /**
  * Organization search result
  */
-export interface OrganizationSearchResult extends SearchResult<Organization> {
-}
+export type OrganizationSearchResult = SearchResult<Organization>;
 
 /**
  * Employee search criteria
@@ -119,8 +115,7 @@ export interface EmployeeSearchCriteria extends MemberSearchCriteria {
 /**
  * Employee search result
  */
-export interface EmployeeSearchResult extends SearchResult<Employee> {
-}
+export type EmployeeSearchResult = SearchResult<Employee>;
 
 /**
  * Vendor search criteria
@@ -132,8 +127,7 @@ export interface VendorSearchCriteria extends MemberSearchCriteria {
 /**
  * Vendor search result
  */
-export interface VendorSearchResult extends SearchResult<Vendor> {
-}
+export type VendorSearchResult = SearchResult<Vendor>;
 
 /**
  * Payment search criteria

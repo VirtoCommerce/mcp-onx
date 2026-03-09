@@ -359,8 +359,10 @@ export class OrderTransformer extends BaseTransformer {
     address: VirtoAddress,
     addressType: 'Billing' | 'Shipping'
   ): VirtoAddress {
-    const { key: _key, outerId: _outerId, ...rest } = address;
-    return { ...rest, addressType };
+    const cleaned = { ...address, addressType };
+    delete cleaned.key;
+    delete cleaned.outerId;
+    return cleaned;
   }
 
   /**
