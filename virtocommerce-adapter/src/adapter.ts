@@ -64,9 +64,16 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
   constructor(config: any = {}) {
     const options = config.options || config;
 
+    if (!options.apiUrl) {
+      throw new AdapterError('apiUrl is required', ErrorCode.INVALID_REQUEST);
+    }
+    if (!options.apiKey) {
+      throw new AdapterError('apiKey is required', ErrorCode.INVALID_REQUEST);
+    }
+
     this.options = {
-      apiUrl: options.apiUrl || 'https://api.yourfulfillment.com',
-      apiKey: options.apiKey || '',
+      apiUrl: options.apiUrl,
+      apiKey: options.apiKey,
       workspace: options.workspace,
       timeout: options.timeout || 30000,
       retryAttempts: options.retryAttempts || 3,

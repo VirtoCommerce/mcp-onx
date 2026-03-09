@@ -49,6 +49,18 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
     putSpy = jest.spyOn(mockApiClient, 'put') as unknown as jest.MockedFunction<any>;
   });
 
+  describe('Constructor Validation', () => {
+    it('should throw when apiUrl is missing', () => {
+      expect(() => new VirtoCommerceFulfillmentAdapter({ apiKey: 'key' })).toThrow('apiUrl is required');
+    });
+
+    it('should throw when apiKey is missing', () => {
+      expect(() => new VirtoCommerceFulfillmentAdapter({ apiUrl: 'https://example.com' })).toThrow(
+        'apiKey is required'
+      );
+    });
+  });
+
   describe('Lifecycle Methods', () => {
     describe('connect', () => {
       it('should connect successfully when API is healthy', async () => {
