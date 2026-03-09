@@ -372,7 +372,7 @@ export class OrderTransformer extends BaseTransformer {
    */
   private upsertAddress(
     order: CustomerOrder,
-    address: import('../models/index.js').Address,
+    address: VirtoAddress,
     type: 'Billing' | 'Shipping'
   ): void {
     if (!order.addresses) {
