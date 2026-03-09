@@ -26,6 +26,8 @@ npm run dev                # Hot reload via vite-node
 npm test                   # Build + run all tests (vitest)
 npm run test:unit          # Unit tests only
 npm run test:integration
+npm run test:watch         # Watch mode
+npm run test:coverage      # Coverage report
 npx vitest tests/unit/adapters/adapter-factory.test.ts  # Single test file
 npx vitest tests/unit --grep "AdapterFactory"           # Tests matching pattern
 npm run lint               # ESLint (flat config)
@@ -87,6 +89,16 @@ Configured via environment variables (see `server/.env.example`):
 - `ADAPTER_CONFIG={"apiUrl":"...","apiKey":"..."}` — JSON config passed to adapter
 - `ADAPTER_EXPORT=ClassName` — optional, defaults to `default` export
 - Feature flags: `FEATURE_*` env vars converted to boolean
+
+### Configuration System
+
+Configuration is loaded and merged in priority order: environment variables (highest) → config file → defaults (lowest).
+
+Key files in `server/src/config/`:
+- `config-manager.ts` — singleton with event emitters for config changes
+- `config-loader.ts` — multi-source loading
+- `environment.ts` — environment variable parsing
+- `config-validator.ts` — schema validation
 
 ### Error Handling (Two-Tier)
 
@@ -190,6 +202,34 @@ Config location: `%APPDATA%\Claude\claude_desktop_config.json` (Windows), `~/Lib
 echo '{"jsonrpc":"2.0","method":"tools/call","id":2,"params":{"name":"get-orders","arguments":{"ids":["order-id"],"includeLineItems":true}}}' | node server/dist/index.js
 ```
 
-## Detailed Server Documentation
+## Git Conventions
 
-See `/server/CLAUDE.md` for server-specific guidance including configuration system details (`ConfigManager`, multi-source loading), error handling pipeline, health monitoring, and common development patterns.
+**Branch prefixes**: `feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`
+
+**Commit messages**: Conventional commits — `feat: add order sync API`, `fix: correct webhook parsing`, `docs: clarify config options`
+
+**PRs target**: `develop` branch
+
+## Common Development Patterns
+
+### Adding a New Tool
+
+1. Create file in `server/src/tools/actions/` or `server/src/tools/queries/`
+2. Extend `BaseTool<TInput, TOutput>` — define `name`, `description`, `inputSchema`, implement `execute()`
+3. **Manually register** in `registerTools()` in `server/src/tools/index.ts` — tools are NOT auto-discovered
+4. Add corresponding method to `ServiceOrchestrator` if not already present
+5. Add input schema in `server/src/schemas/tool-inputs/`
+
+### Adding a Service Operation
+
+1. Add method to appropriate service class in `server/src/services/`
+2. Add delegating method to `ServiceOrchestrator` — wrap with `recordSuccess`/`recordFailure` for health monitoring
+3. Update `IFulfillmentAdapter` interface if the adapter needs a new method
+
+### Production Hardening
+
+`ConfigManager.applySecurityPolicies()` auto-enables in production: debug logging disabled, PII sanitization enabled, request timeouts capped at 60s.
+
+## TypeScript Strictness
+
+The VirtoCommerce adapter uses stricter TypeScript settings than the server: `noUnusedLocals`, `noUnusedParameters`, `noUncheckedIndexedAccess`, `noImplicitOverride` are all enabled. Note: `noImplicitAny` is `false` in the adapter.
