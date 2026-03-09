@@ -4,13 +4,10 @@
  */
 
 export {
-  mapOrderFilters,
   mapOrderFiltersToSearchCriteria,
-  mapInventoryFilters,
-  mapProductFilters,
-  mapProductVariantFilters,
-  mapCustomerFilters,
-  mapFulfillmentFilters,
-  mapReturnFilters,
+  mapProductFiltersToSearchCriteria,
+  mapProductVariantFiltersToSearchCriteria,
+  mapCustomerFiltersToSearchCriteria,
+  mapFulfillmentFiltersToSearchCriteria,
   mapReturnFiltersToSearchCriteria,
 } from './filter.mappers.js';
