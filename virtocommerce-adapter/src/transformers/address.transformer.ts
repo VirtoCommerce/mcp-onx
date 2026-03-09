@@ -108,7 +108,9 @@ export class AddressTransformer extends BaseTransformer {
       return undefined;
     }
 
-    const { firstName, lastName } = this.splitName(address.name);
+    // Prefer explicit firstName/lastName fields; fall back to splitting name
+    const firstName = address.firstName || this.splitName(address.name).firstName;
+    const lastName = address.lastName || this.splitName(address.name).lastName;
 
     return {
       address1: address.line1 ?? '',
