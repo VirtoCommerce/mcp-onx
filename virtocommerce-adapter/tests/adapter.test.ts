@@ -965,6 +965,26 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.orders).toHaveLength(0);
         }
       });
+
+      it('should convert MCP statuses to VirtoCommerce statuses in search criteria', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: { totalCount: 0, results: [] },
+        });
+
+        const input: GetOrdersInput = {
+          statuses: ['pending', 'processing', 'cancelled'],
+        };
+
+        await adapter.getOrders(input);
+
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/order/customerOrders/search',
+          expect.objectContaining({
+            statuses: ['New', 'Processing', 'Cancelled'],
+          })
+        );
+      });
     });
 
     describe('getCustomers', () => {

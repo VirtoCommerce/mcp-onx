@@ -13,6 +13,7 @@ import type {
   GetReturnsInput,
 } from '@virtocommerce/cof-mcp';
 import type { CustomerOrderSearchCriteria, MemberSearchCriteria, ProductSearchCriteria, ShipmentSearchCriteria, ReturnSearchCriteria } from '../models/index.js';
+import { REVERSE_STATUS_MAP } from '../types.js';
 
 /**
  * Map GetOrdersInput to VirtoCommerce CustomerOrderSearchCriteria
@@ -34,9 +35,9 @@ export function mapOrderFiltersToSearchCriteria(input: GetOrdersInput): Customer
     criteria.numbers = input.externalIds;
   }
 
-  // Map statuses
+  // Map statuses: convert MCP normalized statuses to VirtoCommerce PascalCase
   if (input.statuses?.length) {
-    criteria.statuses = input.statuses;
+    criteria.statuses = input.statuses.map((s) => REVERSE_STATUS_MAP[s] ?? s);
   }
 
   // Map names (order numbers)
