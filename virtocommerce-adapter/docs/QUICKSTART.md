@@ -78,7 +78,8 @@ No local installation required. Add to your MCP client configuration:
       "env": {
         "ADAPTER_TYPE": "npm",
         "ADAPTER_PACKAGE": "@virtocommerce/mcp-onx",
-        "ADAPTER_CONFIG": "{\"apiUrl\":\"https://your-vc-instance.com\",\"apiKey\":\"YOUR_API_KEY\",\"workspace\":\"your-store-id\"}"
+        "ADAPTER_CONFIG": "{\"apiUrl\":\"https://your-vc-instance.com\",\"apiKey\":\"YOUR_API_KEY\",\"workspace\":\"your-store-id\"}",
+        "LOG_LEVEL": "info"
       }
     }
   }
@@ -119,7 +120,8 @@ MCP client configuration:
       "env": {
         "ADAPTER_TYPE": "local",
         "ADAPTER_PATH": "/path/to/mcp-onx/virtocommerce-adapter/dist/index.js",
-        "ADAPTER_CONFIG": "{\"apiUrl\":\"https://your-vc-instance.com\",\"apiKey\":\"YOUR_API_KEY\",\"workspace\":\"your-store-id\"}"
+        "ADAPTER_CONFIG": "{\"apiUrl\":\"https://your-vc-instance.com\",\"apiKey\":\"YOUR_API_KEY\",\"workspace\":\"your-store-id\"}",
+        "LOG_LEVEL": "info"
       }
     }
   }

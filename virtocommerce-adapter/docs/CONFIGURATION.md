@@ -163,6 +163,8 @@ api_key: YOUR_API_KEY
 
 Default: **30 seconds** (30000ms). Configurable via `timeout` option.
 
+> **Note**: In production, the MCP server's `ConfigManager.applySecurityPolicies()` caps request timeouts at **60 seconds** regardless of the configured value.
+
 ### Retry Logic
 
 Exponential backoff with jitter:
@@ -175,6 +177,8 @@ Exponential backoff with jitter:
 | Max delay | 10 seconds |
 
 Formula: `min(1000 * 2^(attempt-1), 10000)` ms
+
+When the server responds with a `Retry-After` header (common on 429 responses), the adapter uses that value instead of the exponential backoff delay. The `Retry-After` delay is capped at **60 seconds**.
 
 ### Retryable Errors
 
