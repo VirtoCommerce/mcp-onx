@@ -61,7 +61,7 @@ export class VirtoCommerceFulfillmentAdapter implements IFulfillmentAdapter {
   private productService: ProductService;
   private returnService: ReturnService;
 
-  constructor(config: any = {}) {
+  constructor(config: Partial<AdapterOptions> & { options?: Partial<AdapterOptions> } = {}) {
     const options = config.options || config;
 
     if (!options.apiUrl) {
