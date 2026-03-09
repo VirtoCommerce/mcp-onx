@@ -1435,6 +1435,7 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           '/api/members/search',
           expect.objectContaining({
             objectIds: ['CUST-001'],
+            memberTypes: ['Contact'],
             deepSearch: true,
             responseGroup: 'Full',
           })
@@ -1476,6 +1477,13 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.customers[0]?.firstName).toBe('Jane');
           expect(result.customers[0]?.email).toBe('jane@example.com');
         }
+        expect(postSpy).toHaveBeenCalledWith(
+          '/api/members/search',
+          expect.objectContaining({
+            keyword: 'jane@example.com',
+            memberTypes: ['Contact'],
+          })
+        );
       });
 
       it('should handle empty customer results', async () => {

@@ -188,6 +188,7 @@ export function mapProductVariantFilters(input: GetProductVariantsInput): Record
 export function mapCustomerFiltersToSearchCriteria(input: GetCustomersInput): MemberSearchCriteria {
   const criteria: MemberSearchCriteria = {
     responseGroup: 'Full',
+    memberTypes: ['Contact'],
   };
 
   if (input.ids?.length) {
