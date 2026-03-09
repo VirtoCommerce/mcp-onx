@@ -82,7 +82,7 @@ For all operations including order creation, updates, cancellations, fulfillment
 | Shipment | Search |
 | Customer/Members | Read, Search |
 | Catalog | Search |
-| Pricing | Evaluate |
+| Pricing | Evaluate (optional — only for automatic price lookup) |
 | Inventory | Search |
 | Store | Read |
 | Platform | Read |

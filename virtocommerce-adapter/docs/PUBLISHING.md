@@ -145,7 +145,7 @@ Add these to your package.json:
 ```json
 {
   "scripts": {
-    "prepublishOnly": "npm run clean && npm run build && npm test",
+    "prepublishOnly": "npm run build",
     "publish:patch": "npm version patch && npm publish",
     "publish:minor": "npm version minor && npm publish",
     "publish:major": "npm version major && npm publish",

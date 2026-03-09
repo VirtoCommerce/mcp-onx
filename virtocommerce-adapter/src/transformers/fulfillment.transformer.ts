@@ -19,7 +19,7 @@ const SHIPMENT_STATUS_MAP: Record<string, string> = {
   Delivered: 'delivered',
   OnHold: 'on_hold',
   PartiallyShipped: 'partially_shipped',
-};;
+};
 
 export class FulfillmentTransformer extends BaseTransformer {
   private addressTransformer: AddressTransformer;

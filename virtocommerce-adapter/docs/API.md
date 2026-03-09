@@ -358,9 +358,9 @@ For MCP → VC direction, `firstName` + `lastName` are composed into `name`. Cou
 | MCP Input | VC SearchCriteria | Notes |
 | --------- | ----------------- | ----- |
 | `ids` | `ids` | |
-| `externalIds` | `outerIds` + `numbers` | Searches both fields |
-| `statuses` | `statuses` | |
-| `names` | `numbers` | Appended to existing numbers |
+| `externalIds` | `outerIds` | |
+| `statuses` | `statuses` | Reverse-mapped to VirtoCommerce PascalCase |
+| `names` | `numbers` | |
 | `createdAtMin` | `startDate` | |
 | `createdAtMax` | `endDate` | |
 | `skip` | `skip` | Default: 0 |
@@ -397,8 +397,22 @@ For MCP → VC direction, `firstName` + `lastName` are composed into `name`. Cou
 | `emails` | `keyword` | Space-joined for partial matching; exact match is post-filtered client-side |
 | `skip` | `skip` | Default: 0 |
 | `pageSize` | `take` | Default: 20 |
+| — | `memberTypes` | Always `['Contact']` — excludes Organizations, Employees, Vendors |
 | — | `deepSearch` | Always `true` |
 | — | `responseGroup` | Always `Full` |
+
+### Inventory (`GetInventoryInput`)
+
+Inventory search is a multi-step process handled by `ProductService`:
+
+1. Resolve `skus` → product IDs via `POST /api/catalog/search/products`
+2. Search inventory via `POST /api/inventory/search` with resolved product IDs
+
+| MCP Input | VC InventorySearchCriteria | Notes |
+| --------- | ------------------------- | ----- |
+| `skus` | `productIds` (resolved) | SKUs are first resolved to product IDs via catalog search |
+| `locationIds` | `fulfillmentCenterIds` | |
+| — | `take` | `productIds.length * 10` (multiple FCs per product) |
 
 ### Fulfillments (`GetFulfillmentsInput` → `ShipmentSearchCriteria`)
 
