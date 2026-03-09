@@ -249,7 +249,7 @@ Additional MCP → VC reverse mappings:
 | `id` | `id` | |
 | `outerId` | `externalId` | |
 | `customerOrderId` | `orderId` | Falls back to `customerOrder.id` |
-| `status` | `status` | Via `SHIPMENT_STATUS_MAP` |
+| `status` | `status` | Via `SHIPMENT_STATUS_MAP` in `fulfillment.transformer.ts` |
 | `trackingNumber` | `trackingNumbers[]` | Single value wrapped in array |
 | `items[]` | `lineItems[]` | Uses `lineItem.sku` if available |
 | `fulfillmentCenterId` | `locationId` | |
@@ -313,7 +313,7 @@ Additional MCP → VC reverse mappings:
 | `id` | `id` | |
 | `number` | `returnNumber` | |
 | `orderId` | `orderId` | |
-| `status` | `status` | Via `RETURN_STATUS_MAP` |
+| `status` | `status` | Via `RETURN_STATUS_MAP` in `return.transformer.ts` |
 | `resolution` | `outcome` | |
 | `lineItems[]` | `returnLineItems[]` | Enriched with order line item data (sku, name) |
 | `createdDate` | `createdAt` / `requestedAt` | |
