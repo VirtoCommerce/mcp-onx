@@ -939,6 +939,52 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(result.message).toContain('Failed to update order');
         }
       });
+
+      it('should use shippingCode over shippingCarrier for shipmentMethodCode', async () => {
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-004',
+            number: 'ORD-004',
+            status: 'New',
+            items: [],
+            shipments: [{ id: 'SHIP-001', shipmentMethodCode: 'OldCode', currency: 'USD' }],
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-01T00:00:00Z',
+          },
+        });
+
+        putSpy.mockResolvedValue({ success: true });
+
+        getSpy.mockResolvedValueOnce({
+          success: true,
+          data: {
+            id: 'ORDER-004',
+            number: 'ORD-004',
+            status: 'New',
+            items: [],
+            shipments: [{ id: 'SHIP-001', shipmentMethodCode: 'FixedRateGround', currency: 'USD' }],
+            currency: 'USD',
+            createdDate: '2024-01-01T00:00:00Z',
+            modifiedDate: '2024-01-02T00:00:00Z',
+          },
+        });
+
+        const input: UpdateOrderInput = {
+          id: 'ORDER-004',
+          updates: {
+            shippingCarrier: 'FedEx Ground',
+            shippingCode: 'FixedRateGround',
+          },
+        };
+
+        await adapter.updateOrder(input);
+
+        // shippingCode should win over shippingCarrier
+        const putPayload = putSpy.mock.calls[0]?.[1] as any;
+        expect(putPayload.shipments[0].shipmentMethodCode).toBe('FixedRateGround');
+      });
     });
 
     describe('fulfillOrder', () => {

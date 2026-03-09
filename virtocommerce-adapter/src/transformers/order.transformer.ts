@@ -189,7 +189,7 @@ export class OrderTransformer extends BaseTransformer {
       ? [
           {
             deliveryAddress: shippingAddress,
-            shipmentMethodCode: order.shippingCarrier ?? order.shippingCode,
+            shipmentMethodCode: order.shippingCode ?? order.shippingCarrier,
             shipmentMethodOption: order.shippingClass,
             price: order.shippingPrice,
             comment: shipmentComment,
@@ -311,9 +311,10 @@ export class OrderTransformer extends BaseTransformer {
         updated.shipments = [{ currency: updated.currency }];
       }
       const s = { ...updated.shipments[0] };
-      if (shippingCarrier !== undefined) { s.shipmentMethodCode = shippingCarrier; }
+      if (shippingCode !== undefined || shippingCarrier !== undefined) {
+        s.shipmentMethodCode = shippingCode ?? shippingCarrier;
+      }
       if (shippingClass !== undefined) { s.shipmentMethodOption = shippingClass; }
-      if (shippingCode !== undefined) { s.shipmentMethodCode = shippingCode; }
       if (shippingPrice !== undefined) { s.price = shippingPrice; }
       if (shippingNote !== undefined || giftNote !== undefined) {
         const parts = [giftNote ?? s.comment?.split('\n')[0], shippingNote].filter(Boolean);
