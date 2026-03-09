@@ -1049,6 +1049,58 @@ describe('VirtoCommerceFulfillmentAdapter', () => {
           expect(order.shippingAddress?.lastName).toBe('Jane Watson');
         }
       });
+
+      it('should extract billing address by addressType, not first element', async () => {
+        postSpy.mockResolvedValue({
+          success: true,
+          data: {
+            totalCount: 1,
+            results: [
+              {
+                id: 'ORDER-BILL',
+                number: 'ORD-BILL-001',
+                status: 'New',
+                customerId: 'CUST-001',
+                items: [],
+                addresses: [
+                  {
+                    addressType: 'Shipping',
+                    firstName: 'Ship',
+                    lastName: 'Person',
+                    line1: '1 Ship St',
+                    city: 'Shiptown',
+                    countryName: 'US',
+                  },
+                  {
+                    addressType: 'Billing',
+                    firstName: 'Bill',
+                    lastName: 'Payer',
+                    line1: '2 Bill Ave',
+                    city: 'Billtown',
+                    countryName: 'US',
+                  },
+                ],
+                shipments: [],
+                total: 0,
+                currency: 'USD',
+                createdDate: '2024-01-01T00:00:00Z',
+                modifiedDate: '2024-01-01T00:00:00Z',
+              },
+            ],
+          },
+        });
+
+        const result = await adapter.getOrders({ ids: ['ORDER-BILL'] });
+
+        expect(result.success).toBe(true);
+        if (result.success) {
+          const order = result.orders[0]!;
+          // Should pick the Billing address, not the first (Shipping) address
+          expect(order.billingAddress?.firstName).toBe('Bill');
+          expect(order.billingAddress?.address1).toBe('2 Bill Ave');
+          expect(order.billingAddress?.city).toBe('Billtown');
+        }
+      });
     });
 
     describe('getCustomers', () => {

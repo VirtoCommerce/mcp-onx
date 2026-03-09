@@ -96,7 +96,7 @@ export class OrderTransformer extends BaseTransformer {
       shippingCode: shipment?.shipmentMethodCode,
       shippingPrice: shipment?.price,
       shippingNote: shipment?.comment,
-      billingAddress: this.addressTransformer.toMcpAddress(order.addresses?.[0]),
+      billingAddress: this.addressTransformer.toMcpAddress(this.findBillingAddress(order)),
       lineItems: order.items?.map((item, index) => this.toOrderLineItem(orderId, item, index)) ?? [],
       createdAt: order.createdDate ?? this.now(),
       updatedAt: order.modifiedDate ?? this.now(),
@@ -381,6 +381,22 @@ export class OrderTransformer extends BaseTransformer {
     } else {
       order.addresses.push(address);
     }
+  }
+
+  /**
+   * Find the billing address for an order.
+   * Priority: payment billingAddress → addresses array by type → undefined.
+   */
+  private findBillingAddress(order: CustomerOrder): VirtoAddress | undefined {
+    // 1. Payment-level billing address (most explicit)
+    const paymentBilling = order.inPayments?.[0]?.billingAddress;
+    if (paymentBilling) {
+      return paymentBilling;
+    }
+
+    // 2. Order-level addresses filtered by type
+    const billingTypes = new Set(['Billing', 'BillingAndShipping']);
+    return order.addresses?.find((a) => a.addressType && billingTypes.has(a.addressType));
   }
 
   /**
