@@ -15,6 +15,7 @@ The Order Network eXchange (onX) is an open specification built on the Model Con
 - [Problem Statement](introduction/problem-statement.md) - Why we need a universal standard
 - [Why MCP?](introduction/why-mcp.md) - The technology behind the standard
 - [Ecosystem Benefits](introduction/ecosystem-benefits.md) - Value for every stakeholder
+- [Glossary](introduction/glossary.md) - Glossary of terms used by the standard
 
 ### Technical Specification
 - [Architecture Overview](standard/overview.md) - System design and components
@@ -79,7 +80,7 @@ The standard is governed by a vendor-neutral foundation ensuring:
 
 ### For Developers
 ```bash
-git clone https://github.com/cof-org/mcp-reference-server.git
+git clone https://github.com/commerce-operations-foundation/mcp-reference-server.git
 cd mcp-reference-server/server
 npm install
 npm run build

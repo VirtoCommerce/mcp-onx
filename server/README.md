@@ -4,7 +4,7 @@ A Model Context Protocol (MCP) server that provides standardized access to comme
 
 ## Features
 
-- 10 standardized fulfillment tools covering core order capture, fulfillment, and data queries
+- 12 standardized fulfillment tools (5 actions + 7 queries) covering order capture, fulfillment, returns, and data queries
 - Plug-and-play adapter system for different fulfillment backends
 - Mock adapter for testing and development
 - Full TypeScript implementation with strict type safety
@@ -63,6 +63,7 @@ The server follows a three-layer architecture:
 - `cancel-order` - Cancel existing orders with optional reasons
 - `update-order` - Modify order details and metadata
 - `fulfill-order` - Mark orders as fulfilled and return fulfillment data
+- `create-return` - Create returns for order items with refund/exchange tracking
 
 ### Query Tools
 - `get-orders` - Retrieve orders with rich filtering
@@ -71,6 +72,7 @@ The server follows a three-layer architecture:
 - `get-product-variants` - Retrieve variant data
 - `get-inventory` - Check stock levels across locations
 - `get-fulfillments` - List fulfillment records and statuses
+- `get-returns` - Query return records and status
 
 ## Claude Desktop Integration
 
@@ -183,4 +185,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
 ## Support
 
-For issues and questions, visit [GitHub Issues](https://github.com/cof-org/mcp/issues).
+For issues and questions, visit [GitHub Issues](https://github.com/commerce-operations-foundation/mcp/issues).

@@ -15,7 +15,7 @@ This directory contains user guides for the Commerce Operations Foundation MCP S
 See the [Installation Guide](installation.md) for detailed instructions.
 
 ```bash
-git clone https://github.com/cof-org/mcp-reference-server.git
+git clone https://github.com/commerce-operations-foundation/mcp-reference-server.git
 cd mcp-reference-server/server
 npm install
 npm run build
@@ -37,7 +37,7 @@ See the [Installation Guide](installation.md#claude-desktop-integration) for pla
 
 ## Available Tools
 
-See the [Tools Reference](../standard/tools-reference.md) for documentation of the 10 standard operations.
+See the [Tools Reference](../standard/tools-reference.md) for documentation of the 12 standard operations (5 actions + 7 queries).
 
 ## Adapters
 
