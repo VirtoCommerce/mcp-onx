@@ -1,11 +1,11 @@
 # Getting Started: For Fulfillment Vendors
 
-Build a Commerce Operations Foundation adapter for your fulfillment system using the provided template and the ten tools exposed by the reference server.
+Build a Commerce Operations Foundation adapter for your fulfillment system using the provided template and the twelve tools exposed by the reference server.
 
 ## 1. Set Up the Template
 
 ```bash
-git clone https://github.com/cof-org/mcp-reference-server.git
+git clone https://github.com/commerce-operations-foundation/mcp-reference-server.git
 cd mcp-reference-server
 cp -r adapter-template your-fulfillment-adapter
 cd your-fulfillment-adapter
@@ -100,7 +100,7 @@ it('creates an order', async () => {
 ## 7. Verification Checklist
 
 - [ ] All lifecycle methods implemented
-- [ ] Ten core tools return properly typed payloads
+- [ ] Twelve core tools return properly typed payloads
 - [ ] Input validation and error codes documented
 - [ ] Adapter options exposed via `ADAPTER_CONFIG`
 - [ ] Automated tests pass (`npm test`)
