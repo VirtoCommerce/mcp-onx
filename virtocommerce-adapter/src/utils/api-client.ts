@@ -11,6 +11,7 @@
 
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import type { YourFulfillmentApiResponse } from '../types.js';
+import { getCallerAccessToken } from './caller-identity.js';
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -90,6 +91,19 @@ export class ApiClient {
         return Promise.reject(error);
       }
     );
+
+    // Act on behalf of the calling user when the server forwards their token,
+    // so the backend applies that user's permissions instead of the service ones.
+    this.client.interceptors.request.use((request) => {
+      const accessToken = getCallerAccessToken();
+
+      if (accessToken) {
+        request.headers.set('Authorization', `Bearer ${accessToken}`);
+        request.headers.delete('api_key');
+      }
+
+      return request;
+    });
 
     // Response interceptor for debugging and error handling
     this.client.interceptors.response.use(

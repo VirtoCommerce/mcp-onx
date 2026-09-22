@@ -24,6 +24,7 @@ import { ServiceOrchestrator } from './services/service-orchestrator.js';
 import { ServerConfig } from './types/index.js';
 import { Logger } from './utils/logger.js';
 import { ErrorAdapter, createSuccessResponse } from './errors/error-adapter.js';
+import { publishAuthContextAccessor, runWithAuthContext } from './auth/request-context.js';
 
 export class MCPServerSDK {
   private server: Server;
@@ -146,6 +147,18 @@ export class MCPServerSDK {
   }
 
   /**
+   * Bind the bearer token of the caller to everything the transport does for
+   * this request, so the adapter can act on behalf of that user. Requests
+   * without a token run without a context and fall back to the configured
+   * service credentials.
+   */
+  private withCallerIdentity(req: http.IncomingMessage, handler: () => Promise<void>): Promise<void> {
+    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '');
+
+    return bearer ? runWithAuthContext({ accessToken: bearer[1].trim() }, handler) : handler();
+  }
+
+  /**
    * Connect the adapter without failing the startup of a network transport.
    * A remote server has to stay reachable even when the backend is down or no
    * credentials are configured: it still serves tools/list and reports the
@@ -163,6 +176,8 @@ export class MCPServerSDK {
   async startSSE(port: number): Promise<void> {
     Logger.info('Starting MCP server with SSE transport...');
 
+    publishAuthContextAccessor();
+
     await this.connectAdapter();
     await this.registerTools();
 
@@ -170,7 +185,7 @@ export class MCPServerSDK {
       // CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
@@ -221,7 +236,7 @@ export class MCPServerSDK {
           return;
         }
 
-        await transport.handlePostMessage(req, res);
+        await this.withCallerIdentity(req, () => transport.handlePostMessage(req, res));
         return;
       }
 
@@ -243,6 +258,8 @@ export class MCPServerSDK {
   async startStreamableHTTP(port: number): Promise<void> {
     Logger.info('Starting MCP server with Streamable HTTP transport...');
 
+    publishAuthContextAccessor();
+
     await this.connectAdapter();
     await this.registerTools();
 
@@ -250,7 +267,7 @@ export class MCPServerSDK {
       // CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, last-event-id');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, mcp-session-id, last-event-id, mcp-protocol-version');
       res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id');
 
       if (req.method === 'OPTIONS') {
@@ -306,7 +323,7 @@ export class MCPServerSDK {
 
           const server = this.createServer();
           await server.connect(transport);
-          await transport.handleRequest(req, res, body);
+          await this.withCallerIdentity(req, () => transport.handleRequest(req, res, body));
           return;
         } else {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -314,7 +331,7 @@ export class MCPServerSDK {
           return;
         }
 
-        await transport.handleRequest(req, res, body);
+        await this.withCallerIdentity(req, () => transport.handleRequest(req, res, body));
         return;
       }
 
@@ -325,7 +342,7 @@ export class MCPServerSDK {
           return;
         }
         const transport = this.streamableTransports.get(sessionId)!;
-        await transport.handleRequest(req, res);
+        await this.withCallerIdentity(req, () => transport.handleRequest(req, res));
         return;
       }
 
@@ -336,7 +353,7 @@ export class MCPServerSDK {
           return;
         }
         const transport = this.streamableTransports.get(sessionId)!;
-        await transport.handleRequest(req, res);
+        await this.withCallerIdentity(req, () => transport.handleRequest(req, res));
         return;
       }
 
