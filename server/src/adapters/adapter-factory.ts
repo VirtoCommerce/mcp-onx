@@ -4,6 +4,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'url';
 import { IFulfillmentAdapter, AdapterConfig, AdapterConstructor, AdapterError } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
@@ -251,9 +252,10 @@ export class AdapterFactory {
         break;
     }
 
-    // Include options hash if present
+    // Include options hash if present. A hash, not the options themselves:
+    // the cache key is logged, and the options carry the backend credentials.
     if (config.options) {
-      keyParts.push(JSON.stringify(config.options));
+      keyParts.push(createHash('sha256').update(JSON.stringify(config.options)).digest('hex').slice(0, 12));
     }
 
     return keyParts.join(':');

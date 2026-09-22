@@ -21,6 +21,24 @@ export interface ApiClientConfig {
   headers?: Record<string, string>;
 }
 
+const SECRET_HEADERS = ['api_key', 'authorization', 'x-api-key'];
+
+/**
+ * Replace credential headers with a placeholder before they are logged.
+ * Debug logging is switched on in deployed environments, so the raw headers
+ * would otherwise put the API key or the bearer token into the log of every
+ * single request.
+ */
+function maskSecrets(headers: Record<string, unknown>): Record<string, unknown> {
+  const masked: Record<string, unknown> = {};
+
+  for (const [name, value] of Object.entries(headers)) {
+    masked[name] = SECRET_HEADERS.includes(name.toLowerCase()) ? '***' : value;
+  }
+
+  return masked;
+}
+
 export class ApiClient {
   private client: AxiosInstance;
   private config: ApiClientConfig;
@@ -52,7 +70,7 @@ export class ApiClient {
     this.client.interceptors.request.use(
       (request) => {
         if (this.debugMode && request.url !== '/health') {
-          const headers = { ...request.headers } as Record<string, unknown>;
+          const headers = maskSecrets({ ...request.headers } as Record<string, unknown>);
           console.error('[API Request]', JSON.stringify({
             method: request.method?.toUpperCase(),
             baseURL: request.baseURL,
