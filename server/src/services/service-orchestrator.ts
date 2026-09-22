@@ -36,6 +36,7 @@ export class ServiceOrchestrator {
   private adapterManager: AdapterManager;
   private healthMonitor: HealthMonitor;
   private errorHandler: ErrorHandler;
+  private adapterConfig: AdapterConfig | null = null;
 
   constructor() {
     // Initialize infrastructure components
@@ -51,6 +52,7 @@ export class ServiceOrchestrator {
    */
   async initialize(config: AdapterConfig): Promise<void> {
     const startTime = Date.now();
+    this.adapterConfig = config;
 
     try {
       Logger.info('Initializing ServiceOrchestrator', { adapterType: config.type });
@@ -81,6 +83,20 @@ export class ServiceOrchestrator {
    */
   isInitialized(): boolean {
     return this.adapterManager.isReady();
+  }
+
+  /**
+   * Connect the adapter if the connection at startup did not succeed.
+   * Lets the server stay up when the backend is unreachable or no credentials
+   * are configured, and connect on the first request that actually needs it.
+   */
+  async ensureConnected(): Promise<void> {
+    if (this.isInitialized() || !this.adapterConfig) {
+      return;
+    }
+
+    Logger.info('Adapter is not connected yet, connecting on demand');
+    await this.initialize(this.adapterConfig);
   }
 
   /**

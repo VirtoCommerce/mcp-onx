@@ -83,6 +83,8 @@ export class MCPServerSDK {
       }
 
       try {
+        await this.serviceOrchestrator.ensureConnected();
+
         const result = await this.toolRegistry.execute(name, args || {});
         return createSuccessResponse(result);
       } catch (error) {
@@ -143,10 +145,25 @@ export class MCPServerSDK {
     Logger.info('MCP server running on stdio transport');
   }
 
+  /**
+   * Connect the adapter without failing the startup of a network transport.
+   * A remote server has to stay reachable even when the backend is down or no
+   * credentials are configured: it still serves tools/list and reports the
+   * connection problem per tool call, and ServiceOrchestrator retries the
+   * connection on the first call that needs the adapter.
+   */
+  private async connectAdapter(): Promise<void> {
+    try {
+      await this.serviceOrchestrator.initialize(this.config.adapter);
+    } catch (error) {
+      Logger.warn('Adapter is not connected at startup, will connect on first tool call', { error });
+    }
+  }
+
   async startSSE(port: number): Promise<void> {
     Logger.info('Starting MCP server with SSE transport...');
 
-    await this.serviceOrchestrator.initialize(this.config.adapter);
+    await this.connectAdapter();
     await this.registerTools();
 
     this.httpServer = http.createServer(async (req, res) => {
@@ -226,7 +243,7 @@ export class MCPServerSDK {
   async startStreamableHTTP(port: number): Promise<void> {
     Logger.info('Starting MCP server with Streamable HTTP transport...');
 
-    await this.serviceOrchestrator.initialize(this.config.adapter);
+    await this.connectAdapter();
     await this.registerTools();
 
     this.httpServer = http.createServer(async (req, res) => {
