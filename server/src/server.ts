@@ -25,6 +25,8 @@ import { ServerConfig } from './types/index.js';
 import { Logger } from './utils/logger.js';
 import { ErrorAdapter, createSuccessResponse } from './errors/error-adapter.js';
 import { publishAuthContextAccessor, runWithAuthContext } from './auth/request-context.js';
+import { AuthSettings, METADATA_PATH, buildMetadata, challenge, readAuthSettings } from './auth/protected-resource.js';
+import { InvalidTokenError, TokenVerifier } from './auth/token-verifier.js';
 
 export class MCPServerSDK {
   private server: Server;
@@ -33,6 +35,8 @@ export class MCPServerSDK {
   private config: ServerConfig;
   private httpServer?: http.Server;
   private sseTransports: Map<string, SSEServerTransport> = new Map();
+  private authSettings: AuthSettings | null = null;
+  private tokenVerifier: TokenVerifier | null = null;
   private streamableTransports: Map<string, StreamableHTTPServerTransport> = new Map();
 
   constructor(config: ServerConfig) {
@@ -147,6 +151,79 @@ export class MCPServerSDK {
   }
 
   /**
+   * Decide whether the caller may reach the MCP endpoint. Returns false when
+   * it has already answered the request, so the caller stops processing.
+   */
+  private async authorize(req: http.IncomingMessage, res: http.ServerResponse): Promise<boolean> {
+    const settings = this.authSettings;
+
+    if (!settings || !this.tokenVerifier) {
+      return true;
+    }
+
+    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization ?? '');
+
+    if (!bearer) {
+      this.rejectUnauthorized(req, res, settings);
+      return false;
+    }
+
+    try {
+      const subject = await this.tokenVerifier.verify(bearer[1].trim());
+      Logger.debug('Authorized request', { subject });
+
+      return true;
+    } catch (error) {
+      if (error instanceof InvalidTokenError) {
+        Logger.warn('Rejected a request with an unusable token', { reason: error.message });
+        this.rejectUnauthorized(req, res, settings, error.message);
+
+        return false;
+      }
+
+      // Our own inability to reach the issuer is not the caller's fault, and
+      // answering 401 would send them through a pointless login.
+      Logger.error('Could not verify the token', { error });
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'token_verification_unavailable' }));
+
+      return false;
+    }
+  }
+
+  private rejectUnauthorized(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    settings: AuthSettings,
+    reason?: string
+  ): void {
+    res.writeHead(401, {
+      'Content-Type': 'application/json',
+      'WWW-Authenticate': challenge(req, settings, reason),
+    });
+    res.end(JSON.stringify({ error: reason ? 'invalid_token' : 'unauthorized' }));
+  }
+
+  /** Serve the document that tells clients which authorization server to use. */
+  private serveMetadata(req: http.IncomingMessage, res: http.ServerResponse, settings: AuthSettings): void {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(buildMetadata(req, settings)));
+  }
+
+  private setupAuthentication(): void {
+    this.authSettings = readAuthSettings();
+
+    if (this.authSettings) {
+      this.tokenVerifier = new TokenVerifier(this.authSettings.issuer);
+      Logger.info('Requiring an access token issued by the commerce platform', {
+        issuer: this.authSettings.issuer,
+      });
+    } else {
+      Logger.warn('AUTH_ISSUER is not set: the endpoint is open and every caller acts as the service account');
+    }
+  }
+
+  /**
    * Bind the bearer token of the caller to everything the transport does for
    * this request, so the adapter can act on behalf of that user. Requests
    * without a token run without a context and fall back to the configured
@@ -177,6 +254,7 @@ export class MCPServerSDK {
     Logger.info('Starting MCP server with SSE transport...');
 
     publishAuthContextAccessor();
+    this.setupAuthentication();
 
     await this.connectAdapter();
     await this.registerTools();
@@ -246,6 +324,15 @@ export class MCPServerSDK {
         return;
       }
 
+      if (this.authSettings && url.pathname === METADATA_PATH && req.method === 'GET') {
+        this.serveMetadata(req, res, this.authSettings);
+        return;
+      }
+
+      if (!(await this.authorize(req, res))) {
+        return;
+      }
+
       res.writeHead(404);
       res.end();
     });
@@ -259,6 +346,7 @@ export class MCPServerSDK {
     Logger.info('Starting MCP server with Streamable HTTP transport...');
 
     publishAuthContextAccessor();
+    this.setupAuthentication();
 
     await this.connectAdapter();
     await this.registerTools();
@@ -284,9 +372,18 @@ export class MCPServerSDK {
         return;
       }
 
+      if (this.authSettings && url.pathname === METADATA_PATH && req.method === 'GET') {
+        this.serveMetadata(req, res, this.authSettings);
+        return;
+      }
+
       if (url.pathname !== '/mcp') {
         res.writeHead(404);
         res.end();
+        return;
+      }
+
+      if (!(await this.authorize(req, res))) {
         return;
       }
 
