@@ -3,6 +3,13 @@ name: MCP Server CI
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'virto'
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'prompts/**'
 
 jobs:
   ci:
