@@ -25,7 +25,7 @@ import { ServerConfig } from './types/index.js';
 import { Logger } from './utils/logger.js';
 import { ErrorAdapter, createSuccessResponse } from './errors/error-adapter.js';
 import { publishAuthContextAccessor, runWithAuthContext } from './auth/request-context.js';
-import { AuthSettings, METADATA_PATH, buildMetadata, challenge, readAuthSettings } from './auth/protected-resource.js';
+import { AuthSettings, METADATA_PATH, buildMetadata, challenge, requireAuthSettings } from './auth/protected-resource.js';
 import { InvalidTokenError, TokenVerifier } from './auth/token-verifier.js';
 
 export class MCPServerSDK {
@@ -211,7 +211,7 @@ export class MCPServerSDK {
   }
 
   private setupAuthentication(): void {
-    this.authSettings = readAuthSettings();
+    this.authSettings = requireAuthSettings();
 
     if (this.authSettings) {
       this.tokenVerifier = new TokenVerifier(this.authSettings.issuer);
@@ -219,7 +219,7 @@ export class MCPServerSDK {
         issuer: this.authSettings.issuer,
       });
     } else {
-      Logger.warn('AUTH_ISSUER is not set: the endpoint is open and every caller acts as the service account');
+      Logger.warn('ALLOW_ANONYMOUS is set: every caller reaches the backend with the same access');
     }
   }
 

@@ -8,6 +8,7 @@
  */
 
 import * as http from 'http';
+import { ConfigurationError } from '../utils/errors.js';
 
 export interface AuthSettings {
   /** Authorization server, i.e. the commerce platform that issues the tokens. */
@@ -33,6 +34,25 @@ export function readAuthSettings(env: NodeJS.ProcessEnv = process.env): AuthSett
     issuer: issuer.replace(/\/+$/, ''),
     publicUrl: env.MCP_PUBLIC_URL?.trim().replace(/\/+$/, ''),
   };
+}
+
+/**
+ * Settings for a transport that is reachable over the network, which refuses to start without an
+ * issuer: a server that never asks who is calling gives every caller the same access, and that is
+ * not something to end up with by forgetting a variable. ALLOW_ANONYMOUS is the deliberate way to
+ * say it, for a sandbox where there is nothing to protect.
+ */
+export function requireAuthSettings(env: NodeJS.ProcessEnv = process.env): AuthSettings | null {
+  const settings = readAuthSettings(env);
+
+  if (!settings && env.ALLOW_ANONYMOUS !== 'true') {
+    throw new ConfigurationError(
+      'AUTH_ISSUER is required: it names the commerce platform whose access tokens this server accepts. ' +
+        'Set ALLOW_ANONYMOUS=true to serve callers without a token instead.'
+    );
+  }
+
+  return settings;
 }
 
 /** Public base URL of this server, as the client sees it behind the ingress. */
