@@ -29,12 +29,21 @@ WORKDIR /app
 COPY server/package*.json server/
 RUN cd server && npm ci --omit=dev
 
+# The adapter links to ../server, whose package.json is already here. Copying
+# the builder's server/ instead would bring its dev dependencies into the image.
 COPY virtocommerce-adapter/package*.json virtocommerce-adapter/
-COPY --from=builder /app/server/ server/
 RUN cd virtocommerce-adapter && npm ci --omit=dev
 
 # --- Stage 3: Runtime ---
 FROM node:22-alpine
+
+# Pick up Alpine security fixes released after the base image was built, and
+# drop the package managers: nothing runs them at runtime, and their bundled
+# dependencies (tar, pacote, sigstore, glob, ...) are flagged by image scanners.
+RUN apk upgrade --no-cache && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
 
 WORKDIR /app
 

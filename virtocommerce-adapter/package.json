@@ -54,7 +54,7 @@
     "typescript-eslint": "^8.7.0"
   },
   "dependencies": {
-    "@cof-org/mcp": "^0.5.1",
-    "axios": "^1.6.0"
+    "@cof-org/mcp": "file:../server",
+    "axios": "^1.20.0"
   }
 }
