@@ -98,9 +98,19 @@ jobs:
 
       - name: Set URLs
         id: urls
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           echo "DOCKER_URL=${{ env.DOCKER_REPOSITORY }}/${GITHUB_REPOSITORY_OWNER,,}/${{ env.DOCKER_IMAGE }}:" >> $GITHUB_OUTPUT
           echo "BLOB_URL=${{ steps.blobRelease.outputs.packageUrl }}" >> $GITHUB_OUTPUT
+          # The floating tag, as the platform images get it, with virto as the main branch and develop as dev:
+          # linux-latest from virto, dev-linux-latest from develop, <branch>-linux-latest from any other branch.
+          case "$BRANCH" in
+            virto) FLOATING_TAG='linux-latest' ;;
+            develop) FLOATING_TAG='dev-linux-latest' ;;
+            *) FLOATING_TAG="$(printf '%s' "$BRANCH" | tr -c 'A-Za-z0-9_.-' '_')-linux-latest" ;;
+          esac
+          echo "FLOATING_TAG=$FLOATING_TAG" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -120,7 +130,7 @@ jobs:
           file: ./Dockerfile
           tags: |
             ${{ steps.urls.outputs.DOCKER_URL }}${{ env.DOCKER_TAG }}
-            ${{ steps.urls.outputs.DOCKER_URL }}${{ github.ref == 'refs/heads/master' && 'latest' || 'dev-latest' }}
+            ${{ steps.urls.outputs.DOCKER_URL }}${{ steps.urls.outputs.FLOATING_TAG }}
 
       - name: Parse Jira Keys from All Commits
         uses: VirtoCommerce/.github/actions/get-jira-keys@v3.1000.1
